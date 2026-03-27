@@ -47,7 +47,7 @@ func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.Ke
 		pool:        pool,
 		keyStore:    ks,
 		sessions:    sm,
-		terminal:    terminal.NewBridge(pool),
+		terminal:    terminal.NewBridge(pool, time.Duration(cfg.TerminalIdleTimeout)*time.Second),
 		staticFS:    staticFS,
 	}
 	s.routes()

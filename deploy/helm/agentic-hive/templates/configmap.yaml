@@ -9,7 +9,7 @@ data:
   OVERLAY_DB_PATH: "/data/overlay.db"
   OVERLAY_AUTH_MODE: {{ .Values.auth.mode | quote }}
   OVERLAY_POLL_INTERVAL: {{ .Values.config.pollInterval | quote }}
-  OVERLAY_IDLE_TIMEOUT: {{ .Values.config.idleTimeout | quote }}
+  OVERLAY_TERMINAL_IDLE_TIMEOUT: {{ .Values.config.idleTimeout | quote }}
   OVERLAY_KEYSTORE_BACKEND: {{ .Values.keyStore.backend | quote }}
   {{- if eq .Values.auth.mode "oidc" }}
   OVERLAY_OIDC_ISSUER_URL: {{ .Values.auth.oidc.issuerUrl | quote }}

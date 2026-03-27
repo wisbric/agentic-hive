@@ -10,8 +10,8 @@ type Config struct {
 	DBPath          string
 	AuthMode        string // "local" or "oidc"
 	SessionSecret   string
-	PollInterval    int // seconds
-	IdleTimeout     int // seconds, 0 = disabled
+	PollInterval        int // seconds
+	TerminalIdleTimeout int // seconds, 0 = disabled
 	KeyStoreBackend string // "local" or "vault"
 	LogLevel        string // "debug", "info", "warn", "error" (default "info")
 
@@ -49,8 +49,8 @@ func Load() *Config {
 		DBPath:          envOr("OVERLAY_DB_PATH", "/data/overlay.db"),
 		AuthMode:        envOr("OVERLAY_AUTH_MODE", "local"),
 		SessionSecret:   envOr("OVERLAY_SESSION_SECRET", ""),
-		PollInterval:    envIntOr("OVERLAY_POLL_INTERVAL", 30),
-		IdleTimeout:     envIntOr("OVERLAY_IDLE_TIMEOUT", 0),
+		PollInterval:        envIntOr("OVERLAY_POLL_INTERVAL", 30),
+		TerminalIdleTimeout: envIntOr("OVERLAY_TERMINAL_IDLE_TIMEOUT", 0),
 		KeyStoreBackend: envOr("OVERLAY_KEYSTORE_BACKEND", "local"),
 		LogLevel:        envOr("OVERLAY_LOG_LEVEL", "info"),
 

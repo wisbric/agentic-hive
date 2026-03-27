@@ -55,16 +55,46 @@
       document.getElementById('reconnect-overlay').classList.remove('show');
     };
 
+    let idleTimeout = false;
+
     ws.onmessage = function(event) {
       if (event.data instanceof ArrayBuffer) {
         term.write(new Uint8Array(event.data));
+      } else if (typeof event.data === 'string') {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'idle_timeout') {
+            idleTimeout = true;
+            const overlay = document.getElementById('reconnect-overlay');
+            const overlayMsg = overlay.querySelector('.overlay-message');
+            if (overlayMsg) {
+              overlayMsg.textContent = msg.message || 'Session idle, disconnecting';
+            } else {
+              overlay.setAttribute('data-idle-message', msg.message || 'Session idle, disconnecting');
+            }
+          }
+        } catch (_) {
+          // not JSON, ignore
+        }
       }
     };
 
     ws.onclose = function() {
-      document.getElementById('status').textContent = 'disconnected';
+      document.getElementById('status').textContent = idleTimeout ? 'idle timeout' : 'disconnected';
       document.getElementById('status').className = 'status disconnected';
-      document.getElementById('reconnect-overlay').classList.add('show');
+      const overlay = document.getElementById('reconnect-overlay');
+      overlay.classList.add('show');
+      if (idleTimeout) {
+        overlay.setAttribute('data-idle-timeout', 'true');
+        // Show idle message in overlay if element exists
+        const overlayMsg = overlay.querySelector('.overlay-message');
+        const idleMsg = overlay.getAttribute('data-idle-message');
+        if (overlayMsg && idleMsg) {
+          overlayMsg.textContent = idleMsg;
+        }
+      } else {
+        overlay.removeAttribute('data-idle-timeout');
+      }
     };
 
     ws.onerror = function() {
@@ -92,6 +122,12 @@
   });
 
   window.reconnect = function() {
+    const overlay = document.getElementById('reconnect-overlay');
+    if (overlay.getAttribute('data-idle-timeout') === 'true') {
+      // After idle timeout, clear state and allow reconnect
+      overlay.removeAttribute('data-idle-timeout');
+      overlay.removeAttribute('data-idle-message');
+    }
     term.clear();
     connect();
   };

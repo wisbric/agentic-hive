@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
@@ -35,12 +37,18 @@ type resizeMsg struct {
 	Rows int    `json:"rows"`
 }
 
-type Bridge struct {
-	pool *sshpool.Pool
+type idleTimeoutMsg struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
 }
 
-func NewBridge(pool *sshpool.Pool) *Bridge {
-	return &Bridge{pool: pool}
+type Bridge struct {
+	pool        *sshpool.Pool
+	idleTimeout time.Duration
+}
+
+func NewBridge(pool *sshpool.Pool, idleTimeout time.Duration) *Bridge {
+	return &Bridge{pool: pool, idleTimeout: idleTimeout}
 }
 
 func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +81,10 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		metrics.WebSocketConnectionsActive.Inc()
 		defer metrics.WebSocketConnectionsActive.Dec()
 	}
+
+	// done channel for watcher goroutine teardown
+	done := make(chan struct{})
+	defer close(done)
 
 	// Get SSH session
 	_, sshSession, err := b.pool.Session(r.Context(), serverID)
@@ -117,6 +129,42 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// lastActivity tracks the Unix nanoseconds of last binary I/O (atomic).
+	var lastActivity int64
+	atomic.StoreInt64(&lastActivity, time.Now().UnixNano())
+
+	// Start idle timeout watcher if configured.
+	if b.idleTimeout > 0 {
+		tickInterval := b.idleTimeout / 10
+		if tickInterval < time.Second {
+			tickInterval = time.Second
+		}
+		go func() {
+			ticker := time.NewTicker(tickInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					last := atomic.LoadInt64(&lastActivity)
+					if time.Since(time.Unix(0, last)) >= b.idleTimeout {
+						// Send idle timeout notification before closing.
+						msg, _ := json.Marshal(idleTimeoutMsg{
+							Type:    "idle_timeout",
+							Message: "Session idle for too long, disconnecting",
+						})
+						ws.WriteMessage(websocket.TextMessage, msg)
+						ws.WriteMessage(websocket.CloseMessage,
+							websocket.FormatCloseMessage(websocket.CloseNormalClosure, "idle timeout"))
+						ws.Close()
+						return
+					}
+				}
+			}
+		}()
+	}
+
 	var wg sync.WaitGroup
 
 	// SSH stdout -> WebSocket (terminal output)
@@ -130,6 +178,8 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 				if writeErr := ws.WriteMessage(websocket.BinaryMessage, buf[:n]); writeErr != nil {
 					return
 				}
+				// Terminal output counts as activity.
+				atomic.StoreInt64(&lastActivity, time.Now().UnixNano())
 			}
 			if err != nil {
 				return
@@ -150,12 +200,13 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 
 			switch msgType {
 			case websocket.BinaryMessage:
-				// Raw terminal input
+				// Raw terminal input — counts as activity.
 				if _, err := stdin.Write(msg); err != nil {
 					return
 				}
+				atomic.StoreInt64(&lastActivity, time.Now().UnixNano())
 			case websocket.TextMessage:
-				// Control message (resize)
+				// Control message (resize) — does NOT count as activity.
 				var resize resizeMsg
 				if err := json.Unmarshal(msg, &resize); err != nil {
 					continue
@@ -175,4 +226,3 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "session ended"))
 	wg.Wait()
 }
-
