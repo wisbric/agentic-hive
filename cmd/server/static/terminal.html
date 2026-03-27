@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal</title>
+  <link rel="stylesheet" href="/static/js/vendor/xterm.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; overflow: hidden; }
+    #top-bar {
+      height: 28px;
+      background: #16213e;
+      color: #a0a0b0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font: 12px/1 monospace;
+    }
+    #top-bar .session-info { flex: 1; }
+    #top-bar .status { color: #4ecca3; }
+    #top-bar .status.disconnected { color: #e94560; }
+    #terminal-container { height: calc(100vh - 28px); }
+    #reconnect-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 10;
+      justify-content: center;
+      align-items: center;
+    }
+    #reconnect-overlay.show { display: flex; }
+    #reconnect-overlay button {
+      padding: 12px 24px;
+      background: #4ecca3;
+      border: none;
+      color: #1a1a2e;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="top-bar">
+    <span class="session-info" id="session-info">connecting...</span>
+    <span class="status" id="status">connected</span>
+  </div>
+  <div id="terminal-container"></div>
+  <div id="reconnect-overlay">
+    <button onclick="reconnect()">Reconnect</button>
+  </div>
+
+  <script src="/static/js/vendor/xterm.js"></script>
+  <script src="/static/js/vendor/xterm-addon-fit.js"></script>
+  <script src="/static/js/terminal.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Overlay</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Setup mode -->
+    <div id="setup-view" class="view" style="display:none">
+      <div class="card centered">
+        <h1>Claude Overlay Setup</h1>
+        <p>Create your admin account to get started.</p>
+        <form id="setup-form">
+          <input type="text" id="setup-username" placeholder="Username" required autocomplete="username">
+          <input type="password" id="setup-password" placeholder="Password" required autocomplete="new-password">
+          <button type="submit">Create Admin</button>
+        </form>
+        <div id="setup-error" class="error"></div>
+      </div>
+    </div>
+
+    <!-- Login -->
+    <div id="login-view" class="view" style="display:none">
+      <div class="card centered">
+        <h1>Claude Overlay</h1>
+        <form id="login-form">
+          <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
+          <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+          <button type="submit">Login</button>
+        </form>
+        <div id="login-sso" style="display:none">
+          <div class="divider"><span>or</span></div>
+          <a href="/api/auth/oidc/login" class="btn btn-secondary">Login with SSO</a>
+        </div>
+        <div id="login-error" class="error"></div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-view" class="view" style="display:none">
+      <header>
+        <h1>Claude Overlay</h1>
+        <div class="header-right">
+          <span id="current-user"></span>
+          <button id="logout-btn" class="btn-small">Logout</button>
+        </div>
+      </header>
+
+      <main>
+        <div id="servers-list"></div>
+
+        <div id="add-server-section" style="display:none">
+          <h2>Add Server</h2>
+          <form id="add-server-form" class="card">
+            <input type="text" id="server-name" placeholder="Display name" required>
+            <input type="text" id="server-host" placeholder="Hostname or IP" required>
+            <input type="number" id="server-port" placeholder="Port (22)" value="22">
+            <input type="text" id="server-user" placeholder="SSH user" required>
+            <textarea id="server-key" placeholder="Paste SSH private key" rows="6" required></textarea>
+            <button type="submit">Add Server</button>
+          </form>
+        </div>
+
+        <button id="show-add-server" class="btn">+ Add Server</button>
+      </main>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
