@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -140,14 +140,14 @@ func (m *Manager) Stop() {
 func (m *Manager) pollAll(ctx context.Context) {
 	servers, err := m.store.ListServers()
 	if err != nil {
-		log.Printf("session poll: list servers failed: %v", err)
+		slog.Warn("session poll: list servers failed", "error", err)
 		return
 	}
 
 	for _, srv := range servers {
 		sessions, err := m.ListSessions(ctx, &srv)
 		if err != nil {
-			log.Printf("session poll: %s (%s) failed: %v", srv.Name, srv.Host, err)
+			slog.Warn("session poll failed", "server_name", srv.Name, "host", srv.Host, "error", err)
 			if srv.Status != store.StatusUnreachable {
 				_ = m.store.UpdateServerStatus(srv.ID, store.StatusUnreachable)
 			}

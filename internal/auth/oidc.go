@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"log"
+	"log/slog"
 	"net/http"
 	"slices"
 
@@ -88,7 +88,7 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	oauth2Token, err := h.oauth.Exchange(r.Context(), code)
 	if err != nil {
-		log.Printf("oidc: token exchange failed: %v", err)
+		slog.Error("oidc token exchange failed", "error", err)
 		http.Error(w, `{"error":"token exchange failed"}`, http.StatusInternalServerError)
 		return
 	}
@@ -101,7 +101,7 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	idToken, err := h.verifier.Verify(r.Context(), rawIDToken)
 	if err != nil {
-		log.Printf("oidc: token verification failed: %v", err)
+		slog.Error("oidc token verification failed", "error", err)
 		http.Error(w, `{"error":"token verification failed"}`, http.StatusInternalServerError)
 		return
 	}
@@ -127,7 +127,7 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.UpsertOIDCUser(idToken.Subject, username, role)
 	if err != nil {
-		log.Printf("oidc: upsert user failed: %v", err)
+		slog.Error("oidc upsert user failed", "error", err)
 		http.Error(w, `{"error":"failed to create user"}`, http.StatusInternalServerError)
 		return
 	}

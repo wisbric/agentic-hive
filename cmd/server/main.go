@@ -4,8 +4,9 @@ import (
 	"context"
 	"embed"
 	"io/fs"
-	"log"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
@@ -20,21 +21,40 @@ import (
 //go:embed all:static
 var embeddedStatic embed.FS
 
+func parseLogLevel(s string) slog.Level {
+	switch strings.ToLower(s) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
 func main() {
 	cfg := config.Load()
 
+	logLevel := parseLogLevel(cfg.LogLevel)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})))
+
 	if cfg.SessionSecret == "" {
-		log.Fatalf("OVERLAY_SESSION_SECRET must be set (generate with: openssl rand -hex 32)")
+		slog.Error("OVERLAY_SESSION_SECRET must be set (generate with: openssl rand -hex 32)")
+		os.Exit(1)
 	}
 
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		slog.Error("failed to open database", "error", err)
+		os.Exit(1)
 	}
 	defer st.Close()
 
 	if err := st.SeedTemplates(); err != nil {
-		log.Fatalf("failed to seed templates: %v", err)
+		slog.Error("failed to seed templates", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize KeyStore
@@ -43,9 +63,10 @@ func main() {
 	case "vault":
 		ks, err = keystore.NewVault(cfg.VaultAddr, cfg.VaultToken, cfg.VaultSecretPath)
 		if err != nil {
-			log.Fatalf("failed to initialize vault keystore: %v", err)
+			slog.Error("failed to initialize vault keystore", "error", err)
+			os.Exit(1)
 		}
-		log.Printf("using vault keystore (%s)", cfg.VaultAddr)
+		slog.Info("keystore initialized", "backend", "vault", "addr", cfg.VaultAddr)
 	default:
 		encSecret := cfg.EncryptionSecret
 		if encSecret == "" {
@@ -53,7 +74,7 @@ func main() {
 			encSecret = cfg.SessionSecret
 		}
 		ks = keystore.NewLocal(st.DB(), encSecret)
-		log.Printf("using local keystore")
+		slog.Info("keystore initialized", "backend", "local")
 	}
 
 	// Initialize SSH Pool and Session Manager
@@ -68,7 +89,8 @@ func main() {
 
 	staticFS, err := fs.Sub(embeddedStatic, "static")
 	if err != nil {
-		log.Fatalf("failed to sub static fs: %v", err)
+		slog.Error("failed to sub static fs", "error", err)
+		os.Exit(1)
 	}
 
 	srv := server.New(cfg, st, pool, ks, sm, staticFS)
@@ -77,15 +99,17 @@ func main() {
 	if cfg.AuthMode == "oidc" && cfg.OIDCIssuerURL != "" {
 		oidcHandler, err := auth.NewOIDCHandler(context.Background(), st, cfg)
 		if err != nil {
-			log.Fatalf("failed to initialize OIDC: %v", err)
+			slog.Error("failed to initialize OIDC", "error", err)
+			os.Exit(1)
 		}
 		server.SetOIDCHandler(srv, oidcHandler)
-		log.Printf("OIDC authentication enabled (issuer=%s)", cfg.OIDCIssuerURL)
+		slog.Info("oidc enabled", "issuer", cfg.OIDCIssuerURL)
 	}
 
-	log.Printf("agentic-hive starting (auth=%s, keystore=%s)", cfg.AuthMode, cfg.KeyStoreBackend)
+	slog.Info("server starting", "auth", cfg.AuthMode, "keystore", cfg.KeyStoreBackend)
 
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("server error: %v", err)
+		slog.Error("server stopped", "error", err)
+		os.Exit(1)
 	}
 }

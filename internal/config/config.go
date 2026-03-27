@@ -13,6 +13,7 @@ type Config struct {
 	PollInterval    int // seconds
 	IdleTimeout     int // seconds, 0 = disabled
 	KeyStoreBackend string // "local" or "vault"
+	LogLevel        string // "debug", "info", "warn", "error" (default "info")
 
 	// OIDC (only when AuthMode == "oidc")
 	OIDCIssuerURL    string
@@ -51,6 +52,7 @@ func Load() *Config {
 		PollInterval:    envIntOr("OVERLAY_POLL_INTERVAL", 30),
 		IdleTimeout:     envIntOr("OVERLAY_IDLE_TIMEOUT", 0),
 		KeyStoreBackend: envOr("OVERLAY_KEYSTORE_BACKEND", "local"),
+		LogLevel:        envOr("OVERLAY_LOG_LEVEL", "info"),
 
 		OIDCIssuerURL:    envOr("OVERLAY_OIDC_ISSUER_URL", ""),
 		OIDCClientID:     envOr("OVERLAY_OIDC_CLIENT_ID", ""),

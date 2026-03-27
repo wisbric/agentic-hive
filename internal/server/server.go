@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -53,18 +53,42 @@ func SetOIDCHandler(s *Server, h *auth.OIDCHandler) {
 	s.mux.HandleFunc("GET /api/auth/oidc/callback", h.HandleCallback)
 }
 
+type responseRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *responseRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &responseRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		slog.Info("request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rec.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	})
+}
+
 func (s *Server) Handler() http.Handler {
-	return auth.CSRFProtect(
+	return loggingMiddleware(auth.CSRFProtect(
 		"/api/auth/login",
 		"/api/auth/setup",
 		"/api/auth/oidc/callback",
 		"/healthz",
 		"/readyz",
-	)(s.mux)
+	)(s.mux))
 }
 
 func (s *Server) ListenAndServe() error {
-	log.Printf("listening on %s", s.cfg.Listen)
+	slog.Info("listening", "addr", s.cfg.Listen)
 	return http.ListenAndServe(s.cfg.Listen, s.Handler())
 }
 
@@ -233,7 +257,7 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if err := s.keyStore.Delete(r.Context(), id); err != nil {
-		log.Printf("delete key for server %s: %v", id, err)
+		slog.Warn("key delete failed", "server_id", id, "error", err)
 	}
 	s.pool.Remove(id)
 

@@ -2,7 +2,7 @@ package terminal
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -64,7 +64,7 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 	// Upgrade to WebSocket
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("websocket upgrade failed: %v", err)
+		slog.Error("websocket upgrade failed", "error", err)
 		return
 	}
 	defer ws.Close()
@@ -72,7 +72,7 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 	// Get SSH session
 	_, sshSession, err := b.pool.Session(r.Context(), serverID)
 	if err != nil {
-		log.Printf("ssh session failed for %s: %v", serverID, err)
+		slog.Error("ssh session failed", "server_id", serverID, "error", err)
 		ws.WriteMessage(websocket.TextMessage, []byte(`{"error":"ssh connection failed"}`))
 		return
 	}
@@ -86,7 +86,7 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := sshSession.RequestPty("xterm-256color", rows, cols, modes); err != nil {
-		log.Printf("request pty failed: %v", err)
+		slog.Error("pty request failed", "error", err)
 		ws.WriteMessage(websocket.TextMessage, []byte(`{"error":"pty request failed"}`))
 		return
 	}
@@ -94,20 +94,20 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 	// Get stdin/stdout pipes
 	stdin, err := sshSession.StdinPipe()
 	if err != nil {
-		log.Printf("stdin pipe failed: %v", err)
+		slog.Error("stdin pipe failed", "error", err)
 		return
 	}
 
 	stdout, err := sshSession.StdoutPipe()
 	if err != nil {
-		log.Printf("stdout pipe failed: %v", err)
+		slog.Error("stdout pipe failed", "error", err)
 		return
 	}
 
 	// Start tmux attach command (sessionName already validated as safe)
 	cmd := "tmux new -A -s " + sessionName
 	if err := sshSession.Start(cmd); err != nil {
-		log.Printf("start command failed: %v", err)
+		slog.Error("tmux attach failed", "error", err)
 		ws.WriteMessage(websocket.TextMessage, []byte(`{"error":"tmux attach failed"}`))
 		return
 	}
