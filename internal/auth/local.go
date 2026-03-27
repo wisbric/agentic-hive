@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -31,11 +32,17 @@ func (h *LocalHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.store.GetUserByUsername(req.Username)
 	if err != nil {
+		if metrics.AuthFailuresTotal != nil {
+			metrics.AuthFailuresTotal.WithLabelValues("invalid_credentials").Inc()
+		}
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		if metrics.AuthFailuresTotal != nil {
+			metrics.AuthFailuresTotal.WithLabelValues("invalid_credentials").Inc()
+		}
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}

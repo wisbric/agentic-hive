@@ -6,12 +6,14 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
@@ -181,6 +183,14 @@ func HandleLogout(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+// jwtFailureReason classifies a JWT verification error into a metric label value.
+func jwtFailureReason(err error) string {
+	if errors.Is(err, jwt.ErrTokenExpired) {
+		return "token_expired"
+	}
+	return "token_invalid"
+}
+
 // RequireAuth returns middleware that checks for a valid JWT in the "session" cookie.
 // On success, it sets the user claims in the request context.
 func RequireAuth(secret string) func(http.Handler) http.Handler {
@@ -196,6 +206,9 @@ func RequireAuth(secret string) func(http.Handler) http.Handler {
 
 			claims, err := VerifyJWT(cookie.Value, secret)
 			if err != nil {
+				if metrics.AuthFailuresTotal != nil {
+					metrics.AuthFailuresTotal.WithLabelValues(jwtFailureReason(err)).Inc()
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
@@ -222,6 +235,9 @@ func RequireAdmin(secret string) func(http.Handler) http.Handler {
 
 			claims, err := VerifyJWT(cookie.Value, secret)
 			if err != nil {
+				if metrics.AuthFailuresTotal != nil {
+					metrics.AuthFailuresTotal.WithLabelValues(jwtFailureReason(err)).Inc()
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})

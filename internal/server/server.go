@@ -3,15 +3,18 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
@@ -70,15 +73,37 @@ func (r *responseRecorder) WriteHeader(code int) {
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip metrics collection for /metrics itself to avoid noise.
+		if r.URL.Path == "/metrics" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		start := time.Now()
 		rec := &responseRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
+
+		elapsed := time.Since(start)
 		slog.Info("request",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,
-			"duration_ms", time.Since(start).Milliseconds(),
+			"duration_ms", elapsed.Milliseconds(),
 		)
+
+		// Use matched route pattern (Go 1.22+) to avoid high cardinality.
+		pattern := r.Pattern
+		if pattern == "" {
+			pattern = r.URL.Path
+		}
+		statusStr := fmt.Sprintf("%d", rec.status)
+
+		if metrics.HTTPRequestsTotal != nil {
+			metrics.HTTPRequestsTotal.WithLabelValues(r.Method, pattern, statusStr).Inc()
+		}
+		if metrics.HTTPRequestDuration != nil {
+			metrics.HTTPRequestDuration.WithLabelValues(r.Method, pattern).Observe(elapsed.Seconds())
+		}
 	})
 }
 
@@ -123,6 +148,9 @@ func (s *Server) Close() {
 func (s *Server) routes() {
 	am := auth.RequireAuth(s.cfg.SessionSecret)
 	adminM := auth.RequireAdmin(s.cfg.SessionSecret)
+
+	// Observability (public — network-level access control is operator responsibility)
+	s.mux.Handle("GET /metrics", promhttp.Handler())
 
 	// Public
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)

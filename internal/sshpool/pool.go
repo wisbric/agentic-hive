@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 	"golang.org/x/crypto/ssh"
 )
@@ -105,6 +106,9 @@ func (p *Pool) getOrConnect(ctx context.Context, serverID string) (*ssh.Client, 
 	}
 	p.conns[serverID] = client
 	p.mu.Unlock()
+	if metrics.SSHConnectionsActive != nil {
+		metrics.SSHConnectionsActive.Inc()
+	}
 
 	return client, nil
 }
@@ -112,6 +116,9 @@ func (p *Pool) getOrConnect(ctx context.Context, serverID string) (*ssh.Client, 
 func (p *Pool) Exec(ctx context.Context, serverID, cmd string) (string, string, error) {
 	client, err := p.getOrConnect(ctx, serverID)
 	if err != nil {
+		if metrics.SSHErrorsTotal != nil {
+			metrics.SSHErrorsTotal.WithLabelValues(serverID).Inc()
+		}
 		return "", "", err
 	}
 
@@ -119,20 +126,34 @@ func (p *Pool) Exec(ctx context.Context, serverID, cmd string) (string, string, 
 	if err != nil {
 		// Try reconnect once
 		p.mu.Lock()
-		delete(p.conns, serverID)
+		if _, ok := p.conns[serverID]; ok {
+			delete(p.conns, serverID)
+			if metrics.SSHConnectionsActive != nil {
+				metrics.SSHConnectionsActive.Dec()
+			}
+		}
 		p.mu.Unlock()
 
 		client, err = p.connect(ctx, serverID)
 		if err != nil {
+			if metrics.SSHErrorsTotal != nil {
+				metrics.SSHErrorsTotal.WithLabelValues(serverID).Inc()
+			}
 			return "", "", fmt.Errorf("reconnect failed: %w", err)
 		}
 
 		p.mu.Lock()
 		p.conns[serverID] = client
 		p.mu.Unlock()
+		if metrics.SSHConnectionsActive != nil {
+			metrics.SSHConnectionsActive.Inc()
+		}
 
 		session, err = client.NewSession()
 		if err != nil {
+			if metrics.SSHErrorsTotal != nil {
+				metrics.SSHErrorsTotal.WithLabelValues(serverID).Inc()
+			}
 			return "", "", fmt.Errorf("new session after reconnect: %w", err)
 		}
 	}
@@ -167,6 +188,9 @@ func (p *Pool) Remove(serverID string) {
 	if client, ok := p.conns[serverID]; ok {
 		client.Close()
 		delete(p.conns, serverID)
+		if metrics.SSHConnectionsActive != nil {
+			metrics.SSHConnectionsActive.Dec()
+		}
 	}
 }
 
@@ -177,5 +201,8 @@ func (p *Pool) Close() {
 	for id, client := range p.conns {
 		client.Close()
 		delete(p.conns, id)
+		if metrics.SSHConnectionsActive != nil {
+			metrics.SSHConnectionsActive.Dec()
+		}
 	}
 }

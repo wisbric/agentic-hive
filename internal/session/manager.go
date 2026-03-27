@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
@@ -151,6 +153,9 @@ func (m *Manager) pollAll(ctx context.Context) {
 			if srv.Status != store.StatusUnreachable {
 				_ = m.store.UpdateServerStatus(srv.ID, store.StatusUnreachable)
 			}
+			if metrics.SessionsActive != nil {
+				metrics.SessionsActive.With(prometheus.Labels{"server_id": srv.ID}).Set(0)
+			}
 			continue
 		}
 
@@ -161,6 +166,10 @@ func (m *Manager) pollAll(ctx context.Context) {
 		m.mu.Lock()
 		m.sessions[srv.ID] = sessions
 		m.mu.Unlock()
+
+		if metrics.SessionsActive != nil {
+			metrics.SessionsActive.With(prometheus.Labels{"server_id": srv.ID}).Set(float64(len(sessions)))
+		}
 	}
 }
 

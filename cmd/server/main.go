@@ -14,6 +14,7 @@ import (
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/server"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
@@ -37,6 +38,8 @@ func parseLogLevel(s string) slog.Level {
 }
 
 func main() {
+	metrics.Init()
+
 	cfg := config.Load()
 
 	logLevel := parseLogLevel(cfg.LogLevel)

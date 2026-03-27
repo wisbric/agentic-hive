@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
 	"golang.org/x/crypto/ssh"
 )
@@ -68,6 +69,10 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer ws.Close()
+	if metrics.WebSocketConnectionsActive != nil {
+		metrics.WebSocketConnectionsActive.Inc()
+		defer metrics.WebSocketConnectionsActive.Dec()
+	}
 
 	// Get SSH session
 	_, sshSession, err := b.pool.Session(r.Context(), serverID)
