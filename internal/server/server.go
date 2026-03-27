@@ -199,13 +199,13 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 	// Test connection
 	_, _, err = s.pool.Exec(r.Context(), id, "echo ok")
 	if err != nil {
-		_ = s.store.UpdateServerStatus(id, "unreachable")
+		_ = s.store.UpdateServerStatus(id, store.StatusUnreachable)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{"status": "key_saved", "reachable": false, "error": err.Error()})
 		return
 	}
 
-	_ = s.store.UpdateServerStatus(id, "reachable")
+	_ = s.store.UpdateServerStatus(id, store.StatusReachable)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "reachable": true})
 }

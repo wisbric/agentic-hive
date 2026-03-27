@@ -120,9 +120,9 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		username = idToken.Subject
 	}
 
-	role := "user"
+	role := store.RoleUser
 	if groups := claimStringSlice(tokenClaims, h.cfg.OIDCRolesClaim); slices.Contains(groups, h.cfg.OIDCAdminGroup) {
-		role = "admin"
+		role = store.RoleAdmin
 	}
 
 	user, err := h.store.UpsertOIDCUser(idToken.Subject, username, role)

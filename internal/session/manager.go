@@ -18,16 +18,10 @@ import (
 
 var safeNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
+var unsafeNameRe = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+
 func sanitizeName(s string) string {
-	result := make([]byte, 0, len(s))
-	for _, b := range []byte(s) {
-		if (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '-' || b == '_' {
-			result = append(result, b)
-		} else {
-			result = append(result, '_')
-		}
-	}
-	return string(result)
+	return unsafeNameRe.ReplaceAllLiteralString(s, "_")
 }
 
 func shellEscape(s string) string {
@@ -154,14 +148,14 @@ func (m *Manager) pollAll(ctx context.Context) {
 		sessions, err := m.ListSessions(ctx, &srv)
 		if err != nil {
 			log.Printf("session poll: %s (%s) failed: %v", srv.Name, srv.Host, err)
-			if srv.Status != "unreachable" {
-				_ = m.store.UpdateServerStatus(srv.ID, "unreachable")
+			if srv.Status != store.StatusUnreachable {
+				_ = m.store.UpdateServerStatus(srv.ID, store.StatusUnreachable)
 			}
 			continue
 		}
 
-		if srv.Status != "reachable" {
-			_ = m.store.UpdateServerStatus(srv.ID, "reachable")
+		if srv.Status != store.StatusReachable {
+			_ = m.store.UpdateServerStatus(srv.ID, store.StatusReachable)
 		}
 
 		m.mu.Lock()

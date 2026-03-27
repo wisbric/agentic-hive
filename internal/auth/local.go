@@ -96,7 +96,7 @@ func (h *LocalHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.store.CreateUser(req.Username, string(hash), "admin")
+	user, err := h.store.CreateUser(req.Username, string(hash), store.RoleAdmin)
 	if err != nil {
 		http.Error(w, `{"error":"failed to create user"}`, http.StatusInternalServerError)
 		return

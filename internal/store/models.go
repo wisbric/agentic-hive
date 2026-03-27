@@ -2,6 +2,15 @@ package store
 
 import "time"
 
+const (
+	RoleAdmin = "admin"
+	RoleUser  = "user"
+
+	StatusUnknown     = "unknown"
+	StatusReachable   = "reachable"
+	StatusUnreachable = "unreachable"
+)
+
 type User struct {
 	ID           string
 	Username     string

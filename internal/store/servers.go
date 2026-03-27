@@ -12,7 +12,7 @@ func (s *Store) CreateServer(name, host string, port int, sshUser string) (*Serv
 		Host:    host,
 		Port:    port,
 		SSHUser: sshUser,
-		Status:  "unknown",
+		Status:  StatusUnknown,
 	}
 
 	_, err := s.db.Exec(

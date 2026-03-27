@@ -28,8 +28,12 @@ func NewVault(addr, token, secretPath string) (*VaultKeyStore, error) {
 	}, nil
 }
 
+func (s *VaultKeyStore) keyPath(serverID string) string {
+	return fmt.Sprintf("%s/%s", s.secretPath, serverID)
+}
+
 func (s *VaultKeyStore) Put(ctx context.Context, serverID string, key []byte) error {
-	path := fmt.Sprintf("%s/%s", s.secretPath, serverID)
+	path := s.keyPath(serverID)
 	_, err := s.client.KVv2("secret").Put(ctx, path, map[string]any{
 		"private_key": string(key),
 	})
@@ -40,7 +44,7 @@ func (s *VaultKeyStore) Put(ctx context.Context, serverID string, key []byte) er
 }
 
 func (s *VaultKeyStore) Get(ctx context.Context, serverID string) ([]byte, error) {
-	path := fmt.Sprintf("%s/%s", s.secretPath, serverID)
+	path := s.keyPath(serverID)
 	secret, err := s.client.KVv2("secret").Get(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("vault get: %w", err)
@@ -55,7 +59,7 @@ func (s *VaultKeyStore) Get(ctx context.Context, serverID string) ([]byte, error
 }
 
 func (s *VaultKeyStore) Delete(ctx context.Context, serverID string) error {
-	path := fmt.Sprintf("%s/%s", s.secretPath, serverID)
+	path := s.keyPath(serverID)
 	err := s.client.KVv2("secret").Delete(ctx, path)
 	if err != nil {
 		return fmt.Errorf("vault delete: %w", err)
