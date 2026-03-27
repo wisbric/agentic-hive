@@ -1,0 +1,100 @@
+stages:
+  - test
+  - build
+  - package
+
+variables:
+  CGO_ENABLED: "1"
+  CONTAINER_IMAGE: ${CI_REGISTRY_IMAGE}
+  HELM_CHART_NAME: agentic-hive
+
+# --- Test ---
+
+test:
+  stage: test
+  image: golang:1.26-alpine
+  before_script:
+    - apk add --no-cache gcc musl-dev
+  script:
+    - go test ./... -v -race -count=1
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+lint:
+  stage: test
+  image: golang:1.26-alpine
+  before_script:
+    - apk add --no-cache gcc musl-dev
+  script:
+    - go vet ./...
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# --- Build Container ---
+
+build-image:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  script:
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+      --destination "${CONTAINER_IMAGE}:latest"
+      ${TAG_DESTINATIONS}
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    # If this is a tag, also push the tag version
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        export TAG_DESTINATIONS="--destination ${CONTAINER_IMAGE}:${CI_COMMIT_TAG}"
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# --- Package Helm Chart ---
+
+package-helm:
+  stage: package
+  image:
+    name: alpine/helm:3.17.3
+    entrypoint: [""]
+  variables:
+    CHART_DIR: deploy/helm/agentic-hive
+  script:
+    # Set chart version from tag or commit SHA
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        CHART_VERSION="${CI_COMMIT_TAG#v}"
+        APP_VERSION="${CI_COMMIT_TAG}"
+      else
+        CHART_VERSION="0.0.0-${CI_COMMIT_SHORT_SHA}"
+        APP_VERSION="${CI_COMMIT_SHORT_SHA}"
+      fi
+    - echo "Chart version: ${CHART_VERSION}, App version: ${APP_VERSION}"
+    # Update Chart.yaml with versions
+    - sed -i "s/^version:.*/version: ${CHART_VERSION}/" ${CHART_DIR}/Chart.yaml
+    - sed -i "s/^appVersion:.*/appVersion: \"${APP_VERSION}\"/" ${CHART_DIR}/Chart.yaml
+    # Update default image tag in values.yaml
+    - sed -i "s/^  tag:.*/  tag: ${APP_VERSION}/" ${CHART_DIR}/values.yaml
+    # Package
+    - helm package ${CHART_DIR} --destination .
+    # Push to GitLab Helm registry
+    - >-
+      helm push
+      agentic-hive-${CHART_VERSION}.tgz
+      oci://${CI_REGISTRY_IMAGE}/helm
+  before_script:
+    - helm registry login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG

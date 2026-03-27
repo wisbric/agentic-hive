@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.wisbric.com/agentic-hive
+  repository: registry.gitlab.com/adfinisde/agentic-workspace/agentic-hive
   tag: latest
   pullPolicy: IfNotPresent
 
