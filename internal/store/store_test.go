@@ -210,6 +210,35 @@ func TestUpdateServerStatus(t *testing.T) {
 	}
 }
 
+func TestUpsertOIDCUser(t *testing.T) {
+	s := testStore(t)
+
+	user, err := s.UpsertOIDCUser("oidc-sub-123", "stefan", "user")
+	if err != nil {
+		t.Fatalf("first UpsertOIDCUser failed: %v", err)
+	}
+	if user.Username != "stefan" {
+		t.Errorf("Username = %q, want %q", user.Username, "stefan")
+	}
+	if user.Role != "user" {
+		t.Errorf("Role = %q, want %q", user.Role, "user")
+	}
+
+	user2, err := s.UpsertOIDCUser("oidc-sub-123", "stefan-updated", "admin")
+	if err != nil {
+		t.Fatalf("second UpsertOIDCUser failed: %v", err)
+	}
+	if user2.ID != user.ID {
+		t.Errorf("ID changed: %q -> %q", user.ID, user2.ID)
+	}
+	if user2.Username != "stefan-updated" {
+		t.Errorf("Username = %q, want %q", user2.Username, "stefan-updated")
+	}
+	if user2.Role != "admin" {
+		t.Errorf("Role = %q, want %q", user2.Role, "admin")
+	}
+}
+
 func TestSeedAndListTemplates(t *testing.T) {
 	s := testStore(t)
 
