@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -56,6 +57,22 @@ func SetUser(r *http.Request, c *Claims) *http.Request {
 func GetUser(r *http.Request) *Claims {
 	c, _ := r.Context().Value(userContextKey).(*Claims)
 	return c
+}
+
+// HandleLogout clears the session cookie.
+func HandleLogout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 // RequireAuth returns middleware that checks for a valid JWT in the "session" cookie.

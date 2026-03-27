@@ -132,3 +132,28 @@ func TestRequireAuthExpiredToken(t *testing.T) {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestHandleLogout(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	w := httptest.NewRecorder()
+
+	HandleLogout(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	cookies := w.Result().Cookies()
+	var sessionCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == "session" {
+			sessionCookie = c
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatal("expected session cookie to be cleared")
+	}
+	if sessionCookie.MaxAge != -1 {
+		t.Errorf("MaxAge = %d, want -1 (delete)", sessionCookie.MaxAge)
+	}
+}
