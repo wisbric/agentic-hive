@@ -1,0 +1,61 @@
+replicaCount: 1
+
+image:
+  repository: registry.wisbric.com/claude-overlay
+  tag: latest
+  pullPolicy: IfNotPresent
+
+auth:
+  mode: local
+  local:
+    adminUsername: admin
+  oidc:
+    issuerUrl: ""
+    clientId: ""
+    clientSecret: ""
+    redirectUrl: ""
+    scopes: "openid,profile,email"
+    rolesClaim: "groups"
+    adminGroup: "overlay-admin"
+
+keyStore:
+  backend: local
+  vault:
+    address: ""
+    authMethod: token
+    token: ""
+    secretPath: "secret/claude-overlay/ssh-keys"
+
+config:
+  sessionSecret: ""
+  idleTimeout: 0
+  pollInterval: 30
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: overlay.dev-ai.wisbric.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

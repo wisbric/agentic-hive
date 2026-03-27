@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "claude-overlay.fullname" . }}
+  labels:
+    {{- include "claude-overlay.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "claude-overlay.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "claude-overlay.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "claude-overlay.fullname" . }}
+            - secretRef:
+                name: {{ include "claude-overlay.fullname" . }}
+          env:
+            - name: OVERLAY_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "claude-overlay.fullname" . }}
+                  key: SESSION_SECRET
+            {{- if and (eq .Values.auth.mode "oidc") .Values.auth.oidc.clientSecret }}
+            - name: OVERLAY_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "claude-overlay.fullname" . }}
+                  key: OIDC_CLIENT_SECRET
+            {{- end }}
+            {{- if and (eq .Values.keyStore.backend "vault") .Values.keyStore.vault.token }}
+            - name: OVERLAY_VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "claude-overlay.fullname" . }}
+                  key: VAULT_TOKEN
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "claude-overlay.fullname" . }}
+      {{- end }}
