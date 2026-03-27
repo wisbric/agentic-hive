@@ -12,12 +12,12 @@ import (
 )
 
 type LocalKeyStore struct {
-	db     *sql.DB
-	secret string
+	db               *sql.DB
+	encryptionSecret string
 }
 
-func NewLocal(db *sql.DB, secret string) *LocalKeyStore {
-	return &LocalKeyStore{db: db, secret: secret}
+func NewLocal(db *sql.DB, encryptionSecret string) *LocalKeyStore {
+	return &LocalKeyStore{db: db, encryptionSecret: encryptionSecret}
 }
 
 func (s *LocalKeyStore) Put(ctx context.Context, serverID string, key []byte) error {
@@ -26,7 +26,7 @@ func (s *LocalKeyStore) Put(ctx context.Context, serverID string, key []byte) er
 		return fmt.Errorf("generate salt: %w", err)
 	}
 
-	encKey := deriveKey(s.secret, salt)
+	encKey := deriveKey(s.encryptionSecret, salt)
 
 	block, err := aes.NewCipher(encKey)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *LocalKeyStore) Get(ctx context.Context, serverID string) ([]byte, error
 		return nil, fmt.Errorf("query key: %w", err)
 	}
 
-	encKey := deriveKey(s.secret, salt)
+	encKey := deriveKey(s.encryptionSecret, salt)
 
 	block, err := aes.NewCipher(encKey)
 	if err != nil {

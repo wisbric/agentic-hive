@@ -27,6 +27,10 @@ type Config struct {
 	VaultToken      string
 	VaultSecretPath string
 
+	// EncryptionSecret for SSH key encryption (separate from JWT signing secret).
+	// If empty, SessionSecret is used as fallback (backward compatible).
+	EncryptionSecret string
+
 	// Emergency local auth when OIDC is primary
 	EmergencyLocalAuth bool
 
@@ -58,6 +62,8 @@ func Load() *Config {
 		VaultAddr:       envOr("OVERLAY_VAULT_ADDR", ""),
 		VaultToken:      envOr("OVERLAY_VAULT_TOKEN", ""),
 		VaultSecretPath: envOr("OVERLAY_VAULT_SECRET_PATH", "secret/agentic-hive/ssh-keys"),
+
+		EncryptionSecret: envOr("OVERLAY_ENCRYPTION_SECRET", ""),
 
 		EmergencyLocalAuth: envOr("OVERLAY_EMERGENCY_LOCAL_AUTH", "") == "true",
 

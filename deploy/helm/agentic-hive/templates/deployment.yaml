@@ -35,6 +35,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "agentic-hive.fullname" . }}
                   key: SESSION_SECRET
+            - name: OVERLAY_ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "agentic-hive.fullname" . }}
+                  key: ENCRYPTION_SECRET
             {{- if and (eq .Values.auth.mode "oidc") .Values.auth.oidc.clientSecret }}
             - name: OVERLAY_OIDC_CLIENT_SECRET
               valueFrom:

@@ -28,6 +28,10 @@ keyStore:
 
 config:
   sessionSecret: ""
+  # encryptionSecret: separate secret for SSH key encryption (recommended in production).
+  # If empty, SESSION_SECRET is used as fallback (backward compatible).
+  # WARNING: changing this after SSH keys have been uploaded will require re-uploading all SSH keys.
+  encryptionSecret: ""
   idleTimeout: 0
   pollInterval: 30
 

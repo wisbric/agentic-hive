@@ -5,6 +5,7 @@ import (
 	"embed"
 	"io/fs"
 	"log"
+	"log/slog"
 	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
@@ -46,7 +47,12 @@ func main() {
 		}
 		log.Printf("using vault keystore (%s)", cfg.VaultAddr)
 	default:
-		ks = keystore.NewLocal(st.DB(), cfg.SessionSecret)
+		encSecret := cfg.EncryptionSecret
+		if encSecret == "" {
+			slog.Warn("OVERLAY_ENCRYPTION_SECRET not set, falling back to SESSION_SECRET for key encryption — set a separate secret in production")
+			encSecret = cfg.SessionSecret
+		}
+		ks = keystore.NewLocal(st.DB(), encSecret)
 		log.Printf("using local keystore")
 	}
 
