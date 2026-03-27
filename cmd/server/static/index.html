@@ -108,55 +108,70 @@
           <h2 class="section-title" style="margin-top:32px">Settings</h2>
 
           <div class="settings-card">
-            <h3>OIDC / Keycloak</h3>
-            <form id="oidc-settings-form">
-              <label id="lbl-oidc-issuer-url">Issuer URL</label>
-              <input type="url" id="oidc-issuer-url" placeholder="https://auth.example.com/realms/hive">
-              <label id="lbl-oidc-client-id">Client ID</label>
-              <input type="text" id="oidc-client-id" placeholder="agentic-hive">
-              <label id="lbl-oidc-client-secret">Client Secret</label>
-              <input type="password" id="oidc-client-secret" placeholder="Leave blank to keep current">
-              <label id="lbl-oidc-redirect-url">Redirect URL</label>
-              <input type="url" id="oidc-redirect-url" placeholder="https://hive.example.com/api/auth/oidc/callback">
-              <label id="lbl-oidc-roles-claim">Roles Claim</label>
-              <input type="text" id="oidc-roles-claim" placeholder="groups">
-              <label id="lbl-oidc-admin-group">Admin Group</label>
-              <input type="text" id="oidc-admin-group" placeholder="overlay-admin">
-              <div class="settings-actions">
-                <button type="button" id="test-oidc-btn" class="btn-small" onclick="testOIDC()">Test Connection</button>
-                <button type="submit" class="btn">Save</button>
-              </div>
-              <div id="oidc-status" class="settings-status"></div>
-            </form>
+            <div class="settings-header" onclick="toggleSettings('oidc')">
+              <h3>OIDC / Keycloak</h3>
+              <span class="chevron" id="chevron-oidc">&#9654;</span>
+            </div>
+            <div class="settings-body" id="settings-body-oidc">
+              <form id="oidc-settings-form">
+                <label id="lbl-oidc-issuer-url">Issuer URL</label>
+                <input type="url" id="oidc-issuer-url" placeholder="https://auth.example.com/realms/hive">
+                <label id="lbl-oidc-client-id">Client ID</label>
+                <input type="text" id="oidc-client-id" placeholder="agentic-hive">
+                <label id="lbl-oidc-client-secret">Client Secret</label>
+                <input type="password" id="oidc-client-secret" placeholder="Leave blank to keep current">
+                <label id="lbl-oidc-redirect-url">Redirect URL</label>
+                <input type="url" id="oidc-redirect-url" placeholder="https://hive.example.com/api/auth/oidc/callback">
+                <label id="lbl-oidc-roles-claim">Roles Claim</label>
+                <input type="text" id="oidc-roles-claim" placeholder="groups">
+                <label id="lbl-oidc-admin-group">Admin Group</label>
+                <input type="text" id="oidc-admin-group" placeholder="overlay-admin">
+                <div class="settings-actions">
+                  <button type="button" id="test-oidc-btn" class="btn-small" onclick="testOIDC()">Test Connection</button>
+                  <button type="submit" class="btn">Save</button>
+                </div>
+                <div id="oidc-status" class="settings-status"></div>
+              </form>
+            </div>
           </div>
 
           <div class="settings-card">
-            <h3>Vault / OpenBao</h3>
-            <form id="vault-settings-form">
-              <label id="lbl-vault-address">Vault Address</label>
-              <input type="url" id="vault-address" placeholder="https://vault.example.com">
-              <label id="lbl-vault-token">Token</label>
-              <input type="password" id="vault-token" placeholder="Leave blank to keep current">
-              <label id="lbl-vault-secret-path">Secret Path</label>
-              <input type="text" id="vault-secret-path" placeholder="secret/global/opnsense-golden-image">
-              <div class="settings-actions">
-                <button type="button" id="test-vault-btn" class="btn-small" onclick="testVault()">Test Connection</button>
-                <button type="submit" class="btn">Save</button>
-              </div>
-              <div id="vault-status" class="settings-status"></div>
-            </form>
+            <div class="settings-header" onclick="toggleSettings('vault')">
+              <h3>Vault / OpenBao</h3>
+              <span class="chevron" id="chevron-vault">&#9654;</span>
+            </div>
+            <div class="settings-body" id="settings-body-vault">
+              <form id="vault-settings-form">
+                <label id="lbl-vault-address">Vault Address</label>
+                <input type="url" id="vault-address" placeholder="https://vault.example.com">
+                <label id="lbl-vault-token">Token</label>
+                <input type="password" id="vault-token" placeholder="Leave blank to keep current">
+                <label id="lbl-vault-secret-path">Secret Path</label>
+                <input type="text" id="vault-secret-path" placeholder="secret/global/opnsense-golden-image">
+                <div class="settings-actions">
+                  <button type="button" id="test-vault-btn" class="btn-small" onclick="testVault()">Test Connection</button>
+                  <button type="submit" class="btn">Save</button>
+                </div>
+                <div id="vault-status" class="settings-status"></div>
+              </form>
+            </div>
           </div>
 
           <div class="settings-card">
-            <h3>General</h3>
-            <form id="general-settings-form">
-              <label id="lbl-general-poll-interval">Poll Interval (seconds)</label>
-              <input type="number" id="general-poll-interval" placeholder="30" min="5" max="300">
-              <div class="settings-actions">
-                <button type="submit" class="btn">Save</button>
-              </div>
-              <div id="general-status" class="settings-status"></div>
-            </form>
+            <div class="settings-header" onclick="toggleSettings('general')">
+              <h3>General</h3>
+              <span class="chevron" id="chevron-general">&#9654;</span>
+            </div>
+            <div class="settings-body" id="settings-body-general">
+              <form id="general-settings-form">
+                <label id="lbl-general-poll-interval">Poll Interval (seconds)</label>
+                <input type="number" id="general-poll-interval" placeholder="30" min="5" max="300">
+                <div class="settings-actions">
+                  <button type="submit" class="btn">Save</button>
+                </div>
+                <div id="general-status" class="settings-status"></div>
+              </form>
+            </div>
           </div>
         </div>
       </main>

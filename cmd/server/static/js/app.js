@@ -175,6 +175,18 @@
     });
   }
 
+  window.toggleSettings = function(name) {
+    const body = document.getElementById('settings-body-' + name);
+    const chevron = document.getElementById('chevron-' + name);
+    if (body.classList.contains('open')) {
+      body.classList.remove('open');
+      if (chevron) chevron.classList.remove('open');
+    } else {
+      body.classList.add('open');
+      if (chevron) chevron.classList.add('open');
+    }
+  };
+
   window.toggleServer = async function(id) {
     const body = document.getElementById('body-' + id);
     if (body.classList.contains('open')) {
