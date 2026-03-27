@@ -71,21 +71,14 @@ func (m *Manager) GetSessions(serverID string) []Session {
 	return sessions
 }
 
-func (m *Manager) ListSessions(ctx context.Context, serverID string) ([]Session, error) {
-	srv, err := m.store.GetServer(serverID)
-	if err != nil {
-		return nil, err
-	}
-
-	stdout, _, err := m.pool.Exec(ctx, serverID,
+func (m *Manager) ListSessions(ctx context.Context, srv *store.Server) ([]Session, error) {
+	stdout, _, err := m.pool.Exec(ctx, srv.ID,
 		"tmux list-sessions -F '#{session_name}:#{session_created}:#{session_windows}:#{session_attached}:#{session_activity}' 2>/dev/null || true",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
-
-	sessions := parseSessions(stdout, srv)
-	return sessions, nil
+	return parseSessions(stdout, srv), nil
 }
 
 func (m *Manager) CreateSession(ctx context.Context, serverID, user, label, command, workdir string) (string, error) {
@@ -158,14 +151,18 @@ func (m *Manager) pollAll(ctx context.Context) {
 	}
 
 	for _, srv := range servers {
-		sessions, err := m.ListSessions(ctx, srv.ID)
+		sessions, err := m.ListSessions(ctx, &srv)
 		if err != nil {
 			log.Printf("session poll: %s (%s) failed: %v", srv.Name, srv.Host, err)
-			_ = m.store.UpdateServerStatus(srv.ID, "unreachable")
+			if srv.Status != "unreachable" {
+				_ = m.store.UpdateServerStatus(srv.ID, "unreachable")
+			}
 			continue
 		}
 
-		_ = m.store.UpdateServerStatus(srv.ID, "reachable")
+		if srv.Status != "reachable" {
+			_ = m.store.UpdateServerStatus(srv.ID, "reachable")
+		}
 
 		m.mu.Lock()
 		m.sessions[srv.ID] = sessions

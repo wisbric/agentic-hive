@@ -3,7 +3,6 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
 	"golang.org/x/crypto/bcrypt"
@@ -45,21 +44,13 @@ func (h *LocalHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		UserID:   user.ID,
 		Username: user.Username,
 		Role:     user.Role,
-	}, h.secret, 24*time.Hour)
+	}, h.secret, SessionTTL)
 	if err != nil {
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   86400,
-	})
+	SetSessionCookie(w, token, http.SameSiteStrictMode)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -115,21 +106,13 @@ func (h *LocalHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 		UserID:   user.ID,
 		Username: user.Username,
 		Role:     user.Role,
-	}, h.secret, 24*time.Hour)
+	}, h.secret, SessionTTL)
 	if err != nil {
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   86400,
-	})
+	SetSessionCookie(w, token, http.SameSiteStrictMode)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{

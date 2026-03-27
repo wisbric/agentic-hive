@@ -32,14 +32,11 @@ func (s *Store) CreateUser(username, passwordHash, role string) (*User, error) {
 	return u, nil
 }
 
-func (s *Store) GetUserByUsername(username string) (*User, error) {
+func scanUser(row *sql.Row) (*User, error) {
 	u := &User{}
-	err := s.db.QueryRow(
-		"SELECT id, username, password_hash, role, oidc_subject, created_at, updated_at FROM users WHERE username = ?",
-		username,
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.OIDCSubject, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.OIDCSubject, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found: %s", username)
+		return nil, fmt.Errorf("user not found")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query user: %w", err)
@@ -47,19 +44,18 @@ func (s *Store) GetUserByUsername(username string) (*User, error) {
 	return u, nil
 }
 
+func (s *Store) GetUserByUsername(username string) (*User, error) {
+	return scanUser(s.db.QueryRow(
+		"SELECT id, username, password_hash, role, oidc_subject, created_at, updated_at FROM users WHERE username = ?",
+		username,
+	))
+}
+
 func (s *Store) GetUserByID(id string) (*User, error) {
-	u := &User{}
-	err := s.db.QueryRow(
+	return scanUser(s.db.QueryRow(
 		"SELECT id, username, password_hash, role, oidc_subject, created_at, updated_at FROM users WHERE id = ?",
 		id,
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.OIDCSubject, &u.CreatedAt, &u.UpdatedAt)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found: %s", id)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("query user: %w", err)
-	}
-	return u, nil
+	))
 }
 
 func (s *Store) UserCount() (int, error) {

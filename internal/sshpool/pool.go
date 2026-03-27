@@ -67,16 +67,7 @@ func (p *Pool) getOrConnect(ctx context.Context, serverID string) (*ssh.Client, 
 	p.mu.RUnlock()
 
 	if ok {
-		// Test if connection is still alive
-		_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
-		if err == nil {
-			return client, nil
-		}
-		// Connection dead, remove and reconnect
-		p.mu.Lock()
-		delete(p.conns, serverID)
-		p.mu.Unlock()
-		client.Close()
+		return client, nil
 	}
 
 	client, err := p.connect(ctx, serverID)
@@ -85,6 +76,12 @@ func (p *Pool) getOrConnect(ctx context.Context, serverID string) (*ssh.Client, 
 	}
 
 	p.mu.Lock()
+	// Check if another goroutine already connected
+	if existing, ok := p.conns[serverID]; ok {
+		p.mu.Unlock()
+		client.Close()
+		return existing, nil
+	}
 	p.conns[serverID] = client
 	p.mu.Unlock()
 

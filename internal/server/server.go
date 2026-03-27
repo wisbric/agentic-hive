@@ -131,7 +131,7 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListServers(w http.ResponseWriter, r *http.Request) {
 	servers, err := s.store.ListServers()
 	if err != nil {
-		http.Error(w, `{"error":"failed to list servers"}`, http.StatusInternalServerError)
+		jsonError(w, "failed to list servers", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -148,7 +148,7 @@ type createServerRequest struct {
 func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 	var req createServerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+		jsonError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -158,7 +158,7 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 
 	srv, err := s.store.CreateServer(req.Name, req.Host, req.Port, req.SSHUser)
 	if err != nil {
-		http.Error(w, `{"error":"failed to create server"}`, http.StatusInternalServerError)
+		jsonError(w, "failed to create server", http.StatusInternalServerError)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (s *Server) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 	s.pool.Remove(id)
 
 	if err := s.store.DeleteServer(id); err != nil {
-		http.Error(w, `{"error":"failed to delete server"}`, http.StatusInternalServerError)
+		jsonError(w, "failed to delete server", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -187,12 +187,12 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 
 	keyData, err := io.ReadAll(io.LimitReader(r.Body, 32*1024))
 	if err != nil {
-		http.Error(w, `{"error":"failed to read key"}`, http.StatusBadRequest)
+		jsonError(w, "failed to read key", http.StatusBadRequest)
 		return
 	}
 
 	if err := s.keyStore.Put(r.Context(), id, keyData); err != nil {
-		http.Error(w, `{"error":"failed to store key"}`, http.StatusInternalServerError)
+		jsonError(w, "failed to store key", http.StatusInternalServerError)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 	var req createSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+		jsonError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -266,7 +266,7 @@ func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
 	serverID := r.URL.Query().Get("server_id")
 	templates, err := s.store.ListTemplates(serverID)
 	if err != nil {
-		http.Error(w, `{"error":"failed to list templates"}`, http.StatusInternalServerError)
+		jsonError(w, "failed to list templates", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

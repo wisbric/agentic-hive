@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"slices"
-	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/config"
@@ -137,21 +136,13 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		UserID:   user.ID,
 		Username: user.Username,
 		Role:     user.Role,
-	}, h.secret, 24*time.Hour)
+	}, h.secret, SessionTTL)
 	if err != nil {
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   86400,
-	})
+	SetSessionCookie(w, token, http.SameSiteLaxMode)
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }

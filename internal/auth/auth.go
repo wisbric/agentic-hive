@@ -10,6 +10,33 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const SessionTTL = 24 * time.Hour
+const sessionCookieMaxAge = 86400 // SessionTTL in seconds
+
+func SetSessionCookie(w http.ResponseWriter, token string, sameSite http.SameSite) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: sameSite,
+		MaxAge:   sessionCookieMaxAge,
+	})
+}
+
+func ClearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+}
+
 type Claims struct {
 	UserID   string `json:"sub"`
 	Username string `json:"name"`
@@ -61,16 +88,7 @@ func GetUser(r *http.Request) *Claims {
 
 // HandleLogout clears the session cookie.
 func HandleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   -1,
-	})
-
+	ClearSessionCookie(w)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
