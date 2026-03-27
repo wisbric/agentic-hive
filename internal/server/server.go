@@ -13,6 +13,7 @@ import (
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
+	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/terminal"
 )
 
 type Server struct {
@@ -23,6 +24,7 @@ type Server struct {
 	pool      *sshpool.Pool
 	keyStore  keystore.KeyStore
 	sessions  *session.Manager
+	terminal  *terminal.Bridge
 }
 
 func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.KeyStore, sm *session.Manager) *Server {
@@ -34,6 +36,7 @@ func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.Ke
 		pool:      pool,
 		keyStore:  ks,
 		sessions:  sm,
+		terminal:  terminal.NewBridge(pool),
 	}
 	s.routes()
 	return s
@@ -79,6 +82,9 @@ func (s *Server) routes() {
 
 	// Templates
 	s.mux.Handle("GET /api/templates", am(http.HandlerFunc(s.handleListTemplates)))
+
+	// Terminal WebSocket
+	s.mux.Handle("GET /ws/terminal/{server}/{session}", am(http.HandlerFunc(s.terminal.HandleTerminal)))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
