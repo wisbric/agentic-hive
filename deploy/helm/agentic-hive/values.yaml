@@ -59,3 +59,11 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
+
+# PodDisruptionBudget
+# Single replica with SQLite. PDB allows disruption since HA is not supported.
+# maxUnavailable: 1 means node drain can proceed (pod may be evicted).
+# Set maxUnavailable: 0 to prevent involuntary eviction and block node drain.
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
