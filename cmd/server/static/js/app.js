@@ -4,6 +4,7 @@
   let currentUser = null;
   let servers = [];
   let refreshTimer = null;
+  const expandedServers = new Set();
 
   function getCookie(name) {
     const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -116,6 +117,8 @@
     showView('dashboard');
     document.getElementById('current-user').textContent = currentUser || '';
     await loadServers();
+    // Show admin section if user has admin role
+    loadAdminSection();
   }
 
   async function loadServers() {
@@ -158,15 +161,29 @@
         </div>
       </div>
     `).join('');
+
+    // Restore expanded state and re-fetch sessions for expanded servers
+    expandedServers.forEach(id => {
+      const body = document.getElementById('body-' + id);
+      if (body) {
+        body.classList.add('open');
+        loadSessions(id);
+      } else {
+        // Server no longer exists, remove from expanded set
+        expandedServers.delete(id);
+      }
+    });
   }
 
   window.toggleServer = async function(id) {
     const body = document.getElementById('body-' + id);
     if (body.classList.contains('open')) {
       body.classList.remove('open');
+      expandedServers.delete(id);
       return;
     }
     body.classList.add('open');
+    expandedServers.add(id);
     await loadSessions(id);
   };
 
@@ -233,8 +250,75 @@
     if (!confirm('Remove this server?')) return;
     try {
       await api('DELETE', '/api/servers/' + id);
+      expandedServers.delete(id);
       loadServers();
     } catch (e) { alert('Failed to delete server'); }
+  };
+
+  // --- Admin Section ---
+  async function loadAdminSection() {
+    const adminSection = document.getElementById('admin-section');
+    if (!adminSection) return;
+
+    // Try to fetch config — if 403, user is not admin
+    try {
+      const res = await api('GET', '/api/admin/config');
+      if (!res.ok) {
+        adminSection.style.display = 'none';
+        return;
+      }
+      const cfg = await res.json();
+      adminSection.style.display = '';
+
+      document.getElementById('admin-config-auth').textContent = cfg.authMode || '—';
+      document.getElementById('admin-config-keystore').textContent = cfg.keyStoreBackend || '—';
+      document.getElementById('admin-config-poll').textContent = (cfg.pollInterval || 30) + 's';
+
+      await refreshUserList();
+    } catch (e) {
+      adminSection.style.display = 'none';
+    }
+  }
+
+  async function refreshUserList() {
+    const container = document.getElementById('admin-users-list');
+    if (!container) return;
+    try {
+      const res = await api('GET', '/api/users');
+      if (!res.ok) return;
+      const users = await res.json();
+      if (!users || users.length === 0) {
+        container.innerHTML = '<p class="no-sessions">No users found.</p>';
+        return;
+      }
+      container.innerHTML = users.map(u => `
+        <div class="user-row">
+          <div>
+            <span class="user-name">${esc(u.username)}</span>
+            <span class="user-role">${esc(u.role)}</span>
+            <span class="user-meta">${esc(u.createdAt)}</span>
+          </div>
+          <div>
+            ${u.username !== currentUser ? `<button class="btn-small btn-danger" onclick="deleteUser('${esc(u.id)}', '${esc(u.username)}')">Delete</button>` : '<span class="user-meta">(you)</span>'}
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      container.innerHTML = '<p class="error">Failed to load users</p>';
+    }
+  }
+
+  window.deleteUser = async function(id, username) {
+    if (!confirm('Delete user ' + username + '? This cannot be undone.')) return;
+    try {
+      const res = await api('DELETE', '/api/users/' + id);
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed: ' + (data.error || 'unknown error'));
+        return;
+      }
+      await refreshUserList();
+    } catch (e) { alert('Failed to delete user'); }
   };
 
   function esc(s) {
@@ -256,6 +340,8 @@
       // Try to access a protected route to check if already logged in
       const res = await fetch('/api/servers', { credentials: 'same-origin' });
       if (res.ok) {
+        // Fetch current user info from session cookie — read username from cookie or session
+        // We don't have a /api/me endpoint, so check if we can parse the session
         showDashboard();
       } else {
         showView('login');

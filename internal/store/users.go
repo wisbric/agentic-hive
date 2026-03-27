@@ -64,6 +64,38 @@ func (s *Store) UserCount() (int, error) {
 	return count, err
 }
 
+func (s *Store) ListUsers() ([]User, error) {
+	rows, err := s.db.Query(
+		"SELECT id, username, password_hash, role, oidc_subject, created_at, updated_at FROM users ORDER BY created_at ASC",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.OIDCSubject, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan user: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+func (s *Store) DeleteUser(id string) error {
+	res, err := s.db.Exec("DELETE FROM users WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("user not found")
+	}
+	return nil
+}
+
 func (s *Store) UpsertOIDCUser(oidcSubject, username, role string) (*User, error) {
 	u := &User{}
 	err := s.db.QueryRow(

@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agentic Hive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -25,6 +28,24 @@
     <!-- Login -->
     <div id="login-view" class="view" style="display:none">
       <div class="card centered">
+        <div class="login-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width="48" height="48">
+            <ellipse cx="32" cy="36" rx="20" ry="22" fill="#1E3A5F"/>
+            <circle cx="32" cy="18" r="14" fill="#1E3A5F"/>
+            <polygon points="20,8 18,0 24,6" fill="#1E3A5F"/>
+            <polygon points="44,8 46,0 40,6" fill="#1E3A5F"/>
+            <circle cx="26" cy="18" r="6" fill="#E8EAED"/>
+            <circle cx="26" cy="18" r="3" fill="#D97706"/>
+            <circle cx="26" cy="18" r="1.5" fill="#0F1117"/>
+            <circle cx="38" cy="18" r="6" fill="#E8EAED"/>
+            <circle cx="38" cy="18" r="3" fill="#D97706"/>
+            <circle cx="38" cy="18" r="1.5" fill="#0F1117"/>
+            <polygon points="32,22 29,26 35,26" fill="#D97706"/>
+            <ellipse cx="32" cy="40" rx="10" ry="12" fill="#253A54" opacity="0.5"/>
+            <ellipse cx="26" cy="57" rx="5" ry="2" fill="#D97706"/>
+            <ellipse cx="38" cy="57" rx="5" ry="2" fill="#D97706"/>
+          </svg>
+        </div>
         <h1>Agentic Hive</h1>
         <form id="login-form">
           <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
@@ -42,7 +63,25 @@
     <!-- Dashboard -->
     <div id="dashboard-view" class="view" style="display:none">
       <header>
-        <h1>Agentic Hive</h1>
+        <div class="header-left">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width="32" height="32">
+            <ellipse cx="32" cy="36" rx="20" ry="22" fill="#1E3A5F"/>
+            <circle cx="32" cy="18" r="14" fill="#1E3A5F"/>
+            <polygon points="20,8 18,0 24,6" fill="#1E3A5F"/>
+            <polygon points="44,8 46,0 40,6" fill="#1E3A5F"/>
+            <circle cx="26" cy="18" r="6" fill="#E8EAED"/>
+            <circle cx="26" cy="18" r="3" fill="#D97706"/>
+            <circle cx="26" cy="18" r="1.5" fill="#0F1117"/>
+            <circle cx="38" cy="18" r="6" fill="#E8EAED"/>
+            <circle cx="38" cy="18" r="3" fill="#D97706"/>
+            <circle cx="38" cy="18" r="1.5" fill="#0F1117"/>
+            <polygon points="32,22 29,26 35,26" fill="#D97706"/>
+            <ellipse cx="32" cy="40" rx="10" ry="12" fill="#253A54" opacity="0.5"/>
+            <ellipse cx="26" cy="57" rx="5" ry="2" fill="#D97706"/>
+            <ellipse cx="38" cy="57" rx="5" ry="2" fill="#D97706"/>
+          </svg>
+          <h1>Agentic Hive</h1>
+        </div>
         <div class="header-right">
           <span id="current-user"></span>
           <button id="logout-btn" class="btn-small">Logout</button>
@@ -65,6 +104,36 @@
         </div>
 
         <button id="show-add-server" class="btn">+ Add Server</button>
+
+        <!-- Admin Section (only visible to admins) -->
+        <div id="admin-section" style="display:none">
+          <h2 class="section-title">Admin</h2>
+
+          <div class="admin-grid">
+            <div class="admin-card">
+              <h3>Configuration</h3>
+              <div class="config-info">
+                <div class="config-row">
+                  <span class="config-label">Auth Mode</span>
+                  <span class="config-value" id="admin-config-auth">—</span>
+                </div>
+                <div class="config-row">
+                  <span class="config-label">Key Store</span>
+                  <span class="config-value" id="admin-config-keystore">—</span>
+                </div>
+                <div class="config-row">
+                  <span class="config-label">Poll Interval</span>
+                  <span class="config-value" id="admin-config-poll">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-card">
+              <h3>Users</h3>
+              <div id="admin-users-list">Loading...</div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   </div>

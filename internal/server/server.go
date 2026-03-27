@@ -1,12 +1,14 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -71,6 +73,13 @@ type responseRecorder struct {
 func (r *responseRecorder) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("response writer does not implement http.Hijacker")
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
@@ -182,6 +191,9 @@ func (s *Server) routes() {
 	// Admin
 	s.mux.Handle("POST /api/admin/backup", adminM(http.HandlerFunc(s.handleBackup)))
 	s.mux.Handle("GET /api/admin/audit", adminM(http.HandlerFunc(s.handleListAuditLog)))
+	s.mux.Handle("GET /api/users", adminM(http.HandlerFunc(s.handleListUsers)))
+	s.mux.Handle("DELETE /api/users/{id}", adminM(http.HandlerFunc(s.handleDeleteUser)))
+	s.mux.Handle("GET /api/admin/config", adminM(http.HandlerFunc(s.handleGetConfig)))
 
 	// Terminal WebSocket
 	s.mux.Handle("GET /ws/terminal/{server}/{session}", am(http.HandlerFunc(s.terminal.HandleTerminal)))
@@ -438,6 +450,56 @@ func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(templates)
+}
+
+func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := s.store.ListUsers()
+	if err != nil {
+		jsonError(w, "failed to list users", http.StatusInternalServerError)
+		return
+	}
+	// Strip password hashes before returning
+	type safeUser struct {
+		ID        string `json:"id"`
+		Username  string `json:"username"`
+		Role      string `json:"role"`
+		CreatedAt string `json:"createdAt"`
+	}
+	safe := make([]safeUser, 0, len(users))
+	for _, u := range users {
+		safe = append(safe, safeUser{
+			ID:        u.ID,
+			Username:  u.Username,
+			Role:      u.Role,
+			CreatedAt: u.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(safe)
+}
+
+func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	caller := auth.GetUser(r)
+	if caller != nil && caller.UserID == id {
+		jsonError(w, "cannot delete yourself", http.StatusBadRequest)
+		return
+	}
+	if err := s.store.DeleteUser(id); err != nil {
+		jsonError(w, "failed to delete user", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"authMode":        s.cfg.AuthMode,
+		"keyStoreBackend": s.cfg.KeyStoreBackend,
+		"pollInterval":    s.cfg.PollInterval,
+	})
 }
 
 func (s *Server) handleAcceptKey(w http.ResponseWriter, r *http.Request) {

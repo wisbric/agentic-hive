@@ -3,24 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terminal</title>
+  <title>Terminal — Agentic Hive</title>
   <link rel="stylesheet" href="/static/js/vendor/xterm.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #1a1a2e; overflow: hidden; }
+    body { background: #0A0F0D; overflow: hidden; }
     #top-bar {
-      height: 28px;
-      background: #16213e;
-      color: #a0a0b0;
+      height: 30px;
+      background: #111916;
+      color: #8B9A91;
       display: flex;
       align-items: center;
-      padding: 0 12px;
-      font: 12px/1 monospace;
+      padding: 0 14px;
+      font: 12px/1 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      border-bottom: 1px solid #1E2E27;
+      gap: 10px;
     }
-    #top-bar .session-info { flex: 1; }
-    #top-bar .status { color: #4ecca3; }
-    #top-bar .status.disconnected { color: #e94560; }
-    #terminal-container { height: calc(100vh - 28px); }
+    #top-bar .owl-icon { display: flex; align-items: center; opacity: 0.7; }
+    #top-bar .session-info { flex: 1; color: #E8ECE9; }
+    #top-bar .status { color: #00e5a0; }
+    #top-bar .status.disconnected { color: #DC2626; }
+    #terminal-container { height: calc(100vh - 30px); }
     #reconnect-overlay {
       display: none;
       position: fixed;
@@ -32,18 +35,34 @@
     }
     #reconnect-overlay.show { display: flex; }
     #reconnect-overlay button {
-      padding: 12px 24px;
-      background: #4ecca3;
+      padding: 12px 28px;
+      background: #00e5a0;
       border: none;
-      color: #1a1a2e;
-      font-size: 16px;
+      color: #0A0F0D;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 6px;
     }
+    #reconnect-overlay button:hover { background: #00C88A; }
   </style>
 </head>
 <body>
   <div id="top-bar">
+    <span class="owl-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width="16" height="16">
+        <ellipse cx="32" cy="36" rx="20" ry="22" fill="#1E3A5F"/>
+        <circle cx="32" cy="18" r="14" fill="#1E3A5F"/>
+        <circle cx="26" cy="18" r="6" fill="#E8EAED"/>
+        <circle cx="26" cy="18" r="3" fill="#D97706"/>
+        <circle cx="26" cy="18" r="1.5" fill="#0F1117"/>
+        <circle cx="38" cy="18" r="6" fill="#E8EAED"/>
+        <circle cx="38" cy="18" r="3" fill="#D97706"/>
+        <circle cx="38" cy="18" r="1.5" fill="#0F1117"/>
+        <polygon points="32,22 29,26 35,26" fill="#D97706"/>
+      </svg>
+    </span>
     <span class="session-info" id="session-info">connecting...</span>
     <span class="status" id="status">connected</span>
   </div>
