@@ -5,11 +5,19 @@
   let servers = [];
   let refreshTimer = null;
 
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
   async function api(method, path, body) {
-    const opts = { method, credentials: 'same-origin' };
+    const opts = { method, credentials: 'same-origin', headers: {} };
     if (body) {
-      opts.headers = { 'Content-Type': 'application/json' };
+      opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(body);
+    }
+    if (method !== 'GET' && method !== 'HEAD') {
+      opts.headers['X-CSRF-Token'] = getCookie('csrf');
     }
     const res = await fetch(path, opts);
     if (res.status === 401) {
@@ -93,6 +101,7 @@
       await fetch('/api/servers/' + srv.ID + '/key', {
         method: 'PUT',
         credentials: 'same-origin',
+        headers: { 'X-CSRF-Token': getCookie('csrf') },
         body: key,
       });
 

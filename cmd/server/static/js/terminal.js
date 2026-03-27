@@ -31,6 +31,11 @@
   term.open(container);
   fitAddon.fit();
 
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
   let ws = null;
   let resizeTimeout = null;
 
@@ -38,7 +43,8 @@
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const cols = term.cols;
     const rows = term.rows;
-    const url = `${proto}//${location.host}/ws/terminal/${serverID}/${sessionName}?cols=${cols}&rows=${rows}`;
+    const csrfToken = getCookie('csrf');
+    const url = `${proto}//${location.host}/ws/terminal/${serverID}/${sessionName}?cols=${cols}&rows=${rows}&csrf=${csrfToken}`;
 
     ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';

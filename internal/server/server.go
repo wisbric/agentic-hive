@@ -54,12 +54,18 @@ func SetOIDCHandler(s *Server, h *auth.OIDCHandler) {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	return auth.CSRFProtect(
+		"/api/auth/login",
+		"/api/auth/setup",
+		"/api/auth/oidc/callback",
+		"/healthz",
+		"/readyz",
+	)(s.mux)
 }
 
 func (s *Server) ListenAndServe() error {
 	log.Printf("listening on %s", s.cfg.Listen)
-	return http.ListenAndServe(s.cfg.Listen, s.mux)
+	return http.ListenAndServe(s.cfg.Listen, s.Handler())
 }
 
 func (s *Server) Close() {

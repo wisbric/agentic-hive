@@ -143,6 +143,10 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	SetSessionCookie(w, token, http.SameSiteLaxMode)
+	if _, err := SetCSRFCookie(w); err != nil {
+		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+		return
+	}
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }

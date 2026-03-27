@@ -2,9 +2,13 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,6 +28,89 @@ func SetSessionCookie(w http.ResponseWriter, token string, sameSite http.SameSit
 		SameSite: sameSite,
 		MaxAge:   sessionCookieMaxAge,
 	})
+}
+
+// SetCSRFCookie generates a 32-byte random hex token, sets a non-HttpOnly
+// "csrf" cookie (Secure, SameSite=Strict, same MaxAge as session), and
+// returns the token string.
+func SetCSRFCookie(w http.ResponseWriter) (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(b)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: false, // intentional — JS must read it
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   sessionCookieMaxAge,
+	})
+	return token, nil
+}
+
+// ReadCSRFCookie returns the value of the "csrf" cookie, or "" if absent.
+func ReadCSRFCookie(r *http.Request) string {
+	c, err := r.Cookie("csrf")
+	if err != nil {
+		return ""
+	}
+	return c.Value
+}
+
+// CSRFProtect returns middleware that validates the double-submit cookie pattern
+// for methods POST, PUT, DELETE, PATCH.
+// It compares r.Header.Get("X-CSRF-Token") against the "csrf" cookie value.
+// Mismatch or missing token returns 403.
+// Safe methods (GET, HEAD, OPTIONS) and the exempt paths pass through unchanged.
+// WebSocket paths (/ws/) are always validated via the "csrf" query parameter.
+func CSRFProtect(exempt ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check exempt paths first (prefix match)
+			for _, e := range exempt {
+				if strings.HasPrefix(r.URL.Path, e) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			// WebSocket paths: validate csrf query param regardless of method
+			if strings.HasPrefix(r.URL.Path, "/ws/") {
+				cookie := ReadCSRFCookie(r)
+				param := r.URL.Query().Get("csrf")
+				if cookie == "" || param == "" || subtle.ConstantTimeCompare([]byte(param), []byte(cookie)) != 1 {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					json.NewEncoder(w).Encode(map[string]string{"error": "csrf token mismatch"})
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Safe methods pass through
+			switch r.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// State-changing methods: validate double-submit cookie
+			cookie := ReadCSRFCookie(r)
+			header := r.Header.Get("X-CSRF-Token")
+			if cookie == "" || header == "" || subtle.ConstantTimeCompare([]byte(header), []byte(cookie)) != 1 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]string{"error": "csrf token mismatch"})
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func ClearSessionCookie(w http.ResponseWriter) {

@@ -51,6 +51,10 @@ func (h *LocalHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	SetSessionCookie(w, token, http.SameSiteStrictMode)
+	if _, err := SetCSRFCookie(w); err != nil {
+		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -113,6 +117,10 @@ func (h *LocalHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	SetSessionCookie(w, token, http.SameSiteStrictMode)
+	if _, err := SetCSRFCookie(w); err != nil {
+		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{

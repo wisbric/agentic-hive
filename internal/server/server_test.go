@@ -279,6 +279,9 @@ func TestReadyzRequireServerReachable(t *testing.T) {
 
 func TestAPIRoutesRequireAuth(t *testing.T) {
 	srv := testServer(t)
+	// Use a fixed CSRF token so state-changing routes pass the CSRF check
+	// and reach the auth middleware (which should return 401 for no session).
+	csrfToken := "test-csrf-token-require-auth"
 	routes := []struct {
 		method string
 		path   string
@@ -288,6 +291,11 @@ func TestAPIRoutesRequireAuth(t *testing.T) {
 	}
 	for _, route := range routes {
 		req := httptest.NewRequest(route.method, route.path, nil)
+		// Include CSRF token for non-GET methods so CSRF middleware passes through
+		if route.method != http.MethodGet {
+			req.AddCookie(&http.Cookie{Name: "csrf", Value: csrfToken})
+			req.Header.Set("X-CSRF-Token", csrfToken)
+		}
 		w := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(w, req)
 		if w.Code != http.StatusUnauthorized {
@@ -319,6 +327,7 @@ func TestSetupEndpoint(t *testing.T) {
 func TestAdminRoutesRequireAdminRole(t *testing.T) {
 	srv := testServer(t)
 	userCookie := makeSessionCookie(t, store.RoleUser)
+	csrfToken := "test-csrf-token-admin-routes"
 
 	adminRoutes := []struct {
 		method string
@@ -332,6 +341,9 @@ func TestAdminRoutesRequireAdminRole(t *testing.T) {
 	for _, route := range adminRoutes {
 		req := httptest.NewRequest(route.method, route.path, nil)
 		req.AddCookie(userCookie)
+		// Include CSRF tokens so the CSRF middleware passes and the RBAC check is exercised
+		req.AddCookie(&http.Cookie{Name: "csrf", Value: csrfToken})
+		req.Header.Set("X-CSRF-Token", csrfToken)
 		w := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
@@ -343,11 +355,14 @@ func TestAdminRoutesRequireAdminRole(t *testing.T) {
 func TestAdminRoutesAllowAdminRole(t *testing.T) {
 	srv := testServer(t)
 	adminCookie := makeSessionCookie(t, store.RoleAdmin)
+	csrfToken := "test-csrf-token-for-admin-route"
 
-	// POST /api/servers with admin should reach handler (not be rejected by RBAC)
+	// POST /api/servers with admin should reach handler (not be rejected by RBAC or CSRF)
 	// It may fail with 400/500 due to missing body/DB state, but not 401/403
 	req := httptest.NewRequest(http.MethodPost, "/api/servers", nil)
 	req.AddCookie(adminCookie)
+	req.AddCookie(&http.Cookie{Name: "csrf", Value: csrfToken})
+	req.Header.Set("X-CSRF-Token", csrfToken)
 	w := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(w, req)
 	if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
@@ -366,6 +381,60 @@ func TestUserRouteAccessibleWithUserRole(t *testing.T) {
 	srv.Handler().ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("GET /api/servers with user role: status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+// --- CSRF Integration Tests ---
+
+func TestCreateServerNoCSRF(t *testing.T) {
+	srv := testServer(t)
+	adminCookie := makeSessionCookie(t, store.RoleAdmin)
+
+	// Admin JWT but no CSRF token → 403
+	req := httptest.NewRequest(http.MethodPost, "/api/servers", strings.NewReader(`{"name":"x","host":"y","port":22,"sshUser":"root"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(adminCookie)
+	// no csrf cookie, no X-CSRF-Token header
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("POST /api/servers without CSRF: status = %d, want 403", w.Code)
+	}
+}
+
+func TestCreateServerWithCSRF(t *testing.T) {
+	srv := testServer(t)
+	adminCookie := makeSessionCookie(t, store.RoleAdmin)
+	csrfToken := "integration-test-csrf-token-value"
+
+	// Admin JWT + valid CSRF → should reach the handler (201 or error, but not 403)
+	req := httptest.NewRequest(http.MethodPost, "/api/servers", strings.NewReader(`{"name":"x","host":"192.0.2.1","port":22,"sshUser":"root"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(adminCookie)
+	req.AddCookie(&http.Cookie{Name: "csrf", Value: csrfToken})
+	req.Header.Set("X-CSRF-Token", csrfToken)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code == http.StatusForbidden {
+		t.Errorf("POST /api/servers with valid CSRF: got 403, CSRF check must pass")
+	}
+	if w.Code != http.StatusCreated {
+		t.Errorf("POST /api/servers with valid CSRF + admin: status = %d, want 201", w.Code)
+	}
+}
+
+func TestLoginNoCSRF(t *testing.T) {
+	srv := testServer(t)
+
+	// POST /api/auth/login without X-CSRF-Token → 200 (exempt path)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username":"nobody","password":"wrong"}`))
+	req.Header.Set("Content-Type", "application/json")
+	// no csrf token
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	// Should not return 403 (CSRF does not apply to login)
+	if w.Code == http.StatusForbidden {
+		t.Errorf("POST /api/auth/login without CSRF: status = %d, must not be 403 (exempt path)", w.Code)
 	}
 }
 
