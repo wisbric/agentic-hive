@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
 var safeNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)

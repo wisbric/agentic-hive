@@ -50,7 +50,7 @@ func Load() *Config {
 
 		VaultAddr:       envOr("OVERLAY_VAULT_ADDR", ""),
 		VaultToken:      envOr("OVERLAY_VAULT_TOKEN", ""),
-		VaultSecretPath: envOr("OVERLAY_VAULT_SECRET_PATH", "secret/claude-overlay/ssh-keys"),
+		VaultSecretPath: envOr("OVERLAY_VAULT_SECRET_PATH", "secret/agentic-hive/ssh-keys"),
 
 		EmergencyLocalAuth: envOr("OVERLAY_EMERGENCY_LOCAL_AUTH", "") == "true",
 	}

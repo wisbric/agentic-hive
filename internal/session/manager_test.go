@@ -3,7 +3,7 @@ package session
 import (
 	"testing"
 
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
 func TestParseSessions(t *testing.T) {

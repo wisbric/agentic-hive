@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/keystore"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
 func TestNewPool(t *testing.T) {

@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "claude-overlay.name" -}}
+{{- define "agentic-hive.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "claude-overlay.fullname" -}}
+{{- define "agentic-hive.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,9 +24,9 @@ Create a default fully qualified app name.
 {{/*
 Common labels
 */}}
-{{- define "claude-overlay.labels" -}}
-helm.sh/chart: {{ include "claude-overlay.name" . }}-{{ .Chart.Version | replace "+" "_" }}
-{{ include "claude-overlay.selectorLabels" . }}
+{{- define "agentic-hive.labels" -}}
+helm.sh/chart: {{ include "agentic-hive.name" . }}-{{ .Chart.Version | replace "+" "_" }}
+{{ include "agentic-hive.selectorLabels" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -34,7 +34,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "claude-overlay.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "claude-overlay.name" . }}
+{{- define "agentic-hive.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "agentic-hive.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

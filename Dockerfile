@@ -7,11 +7,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=1 go build -o /claude-overlay ./cmd/server
+RUN CGO_ENABLED=1 go build -o /agentic-hive ./cmd/server
 
 FROM alpine:3.21
 RUN apk add --no-cache openssh-client ca-certificates
-COPY --from=build /claude-overlay /usr/local/bin/claude-overlay
+COPY --from=build /agentic-hive /usr/local/bin/agentic-hive
 
 EXPOSE 8080
-ENTRYPOINT ["claude-overlay"]
+ENTRYPOINT ["agentic-hive"]

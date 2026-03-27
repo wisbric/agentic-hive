@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
 	"golang.org/x/crypto/ssh"
 )
 

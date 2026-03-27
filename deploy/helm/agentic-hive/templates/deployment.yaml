@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "claude-overlay.fullname" . }}
+  name: {{ include "agentic-hive.fullname" . }}
   labels:
-    {{- include "claude-overlay.labels" . | nindent 4 }}
+    {{- include "agentic-hive.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "claude-overlay.selectorLabels" . | nindent 6 }}
+      {{- include "agentic-hive.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "claude-overlay.selectorLabels" . | nindent 8 }}
+        {{- include "agentic-hive.selectorLabels" . | nindent 8 }}
     spec:
       containers:
         - name: {{ .Chart.Name }}
@@ -26,27 +26,27 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: {{ include "claude-overlay.fullname" . }}
+                name: {{ include "agentic-hive.fullname" . }}
             - secretRef:
-                name: {{ include "claude-overlay.fullname" . }}
+                name: {{ include "agentic-hive.fullname" . }}
           env:
             - name: OVERLAY_SESSION_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claude-overlay.fullname" . }}
+                  name: {{ include "agentic-hive.fullname" . }}
                   key: SESSION_SECRET
             {{- if and (eq .Values.auth.mode "oidc") .Values.auth.oidc.clientSecret }}
             - name: OVERLAY_OIDC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claude-overlay.fullname" . }}
+                  name: {{ include "agentic-hive.fullname" . }}
                   key: OIDC_CLIENT_SECRET
             {{- end }}
             {{- if and (eq .Values.keyStore.backend "vault") .Values.keyStore.vault.token }}
             - name: OVERLAY_VAULT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "claude-overlay.fullname" . }}
+                  name: {{ include "agentic-hive.fullname" . }}
                   key: VAULT_TOKEN
             {{- end }}
           livenessProbe:
@@ -72,5 +72,5 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "claude-overlay.fullname" . }}
+            claimName: {{ include "agentic-hive.fullname" . }}
       {{- end }}

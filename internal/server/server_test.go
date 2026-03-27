@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/config"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/keystore"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/session"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/session"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
 func testServer(t *testing.T) *Server {

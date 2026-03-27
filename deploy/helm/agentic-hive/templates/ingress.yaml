@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "claude-overlay.fullname" . }}
+  name: {{ include "agentic-hive.fullname" . }}
   labels:
-    {{- include "claude-overlay.labels" . | nindent 4 }}
+    {{- include "agentic-hive.labels" . | nindent 4 }}
   annotations:
     {{- if eq .Values.ingress.className "nginx" }}
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
@@ -37,7 +37,7 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "claude-overlay.fullname" $ }}
+                name: {{ include "agentic-hive.fullname" $ }}
                 port:
                   name: http
           {{- end }}

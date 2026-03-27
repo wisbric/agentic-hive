@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.wisbric.com/claude-overlay
+  repository: registry.wisbric.com/agentic-hive
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -24,7 +24,7 @@ keyStore:
     address: ""
     authMethod: token
     token: ""
-    secretPath: "secret/claude-overlay/ssh-keys"
+    secretPath: "secret/agentic-hive/ssh-keys"
 
 config:
   sessionSecret: ""

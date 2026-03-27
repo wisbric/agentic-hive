@@ -7,13 +7,13 @@ import (
 	"log"
 	"time"
 
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/auth"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/config"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/keystore"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/server"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/session"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/server"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/session"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
 //go:embed all:static
@@ -76,7 +76,7 @@ func main() {
 		log.Printf("OIDC authentication enabled (issuer=%s)", cfg.OIDCIssuerURL)
 	}
 
-	log.Printf("claude-overlay starting (auth=%s, keystore=%s)", cfg.AuthMode, cfg.KeyStoreBackend)
+	log.Printf("agentic-hive starting (auth=%s, keystore=%s)", cfg.AuthMode, cfg.KeyStoreBackend)
 
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("server error: %v", err)

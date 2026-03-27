@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "claude-overlay.fullname" . }}
+  name: {{ include "agentic-hive.fullname" . }}
   labels:
-    {{- include "claude-overlay.labels" . | nindent 4 }}
+    {{- include "agentic-hive.labels" . | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}
