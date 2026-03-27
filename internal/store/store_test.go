@@ -143,3 +143,95 @@ func TestUserCount(t *testing.T) {
 		t.Errorf("count = %d, want 2", count)
 	}
 }
+
+func TestCreateAndGetServer(t *testing.T) {
+	s := testStore(t)
+
+	srv, err := s.CreateServer("devbox", "devbox.wisbric.com", 22, "stefan")
+	if err != nil {
+		t.Fatalf("CreateServer failed: %v", err)
+	}
+	if srv.Name != "devbox" {
+		t.Errorf("Name = %q, want %q", srv.Name, "devbox")
+	}
+	if srv.Status != "unknown" {
+		t.Errorf("Status = %q, want %q", srv.Status, "unknown")
+	}
+
+	got, err := s.GetServer(srv.ID)
+	if err != nil {
+		t.Fatalf("GetServer failed: %v", err)
+	}
+	if got.Host != "devbox.wisbric.com" {
+		t.Errorf("Host = %q, want %q", got.Host, "devbox.wisbric.com")
+	}
+}
+
+func TestListServers(t *testing.T) {
+	s := testStore(t)
+
+	_, _ = s.CreateServer("a", "a.example.com", 22, "root")
+	_, _ = s.CreateServer("b", "b.example.com", 2222, "deploy")
+
+	servers, err := s.ListServers()
+	if err != nil {
+		t.Fatalf("ListServers failed: %v", err)
+	}
+	if len(servers) != 2 {
+		t.Errorf("len = %d, want 2", len(servers))
+	}
+}
+
+func TestDeleteServer(t *testing.T) {
+	s := testStore(t)
+
+	srv, _ := s.CreateServer("del", "del.example.com", 22, "root")
+	if err := s.DeleteServer(srv.ID); err != nil {
+		t.Fatalf("DeleteServer failed: %v", err)
+	}
+
+	servers, _ := s.ListServers()
+	if len(servers) != 0 {
+		t.Errorf("len = %d, want 0 after delete", len(servers))
+	}
+}
+
+func TestUpdateServerStatus(t *testing.T) {
+	s := testStore(t)
+
+	srv, _ := s.CreateServer("s1", "s1.example.com", 22, "root")
+	if err := s.UpdateServerStatus(srv.ID, "reachable"); err != nil {
+		t.Fatalf("UpdateServerStatus failed: %v", err)
+	}
+
+	got, _ := s.GetServer(srv.ID)
+	if got.Status != "reachable" {
+		t.Errorf("Status = %q, want %q", got.Status, "reachable")
+	}
+}
+
+func TestSeedAndListTemplates(t *testing.T) {
+	s := testStore(t)
+
+	if err := s.SeedTemplates(); err != nil {
+		t.Fatalf("SeedTemplates failed: %v", err)
+	}
+
+	templates, err := s.ListTemplates("")
+	if err != nil {
+		t.Fatalf("ListTemplates failed: %v", err)
+	}
+	if len(templates) < 3 {
+		t.Errorf("expected at least 3 default templates, got %d", len(templates))
+	}
+
+	// Seed again should be idempotent
+	if err := s.SeedTemplates(); err != nil {
+		t.Fatalf("second SeedTemplates failed: %v", err)
+	}
+
+	templates2, _ := s.ListTemplates("")
+	if len(templates2) != len(templates) {
+		t.Errorf("template count changed after re-seed: %d -> %d", len(templates), len(templates2))
+	}
+}
