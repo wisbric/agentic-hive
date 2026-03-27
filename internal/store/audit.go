@@ -16,8 +16,9 @@ const (
 	AuditServerKeyUpload  = "server.key_upload"
 	AuditSessionCreate    = "session.create"
 	AuditSessionKill      = "session.kill"
-	AuditTerminalConnect  = "terminal.connect"
+	AuditTerminalConnect    = "terminal.connect"
 	AuditTerminalDisconnect = "terminal.disconnect"
+	AuditSettingsUpdate     = "settings.update"
 )
 
 // AuditFilter controls which audit log entries are returned.

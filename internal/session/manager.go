@@ -139,6 +139,12 @@ func (m *Manager) StartPolling(ctx context.Context, interval time.Duration) {
 	}()
 }
 
+// IntervalCh returns the channel that receives interval updates from UpdateInterval.
+// This is exported for testing purposes.
+func (m *Manager) IntervalCh() <-chan time.Duration {
+	return m.intervalCh
+}
+
 // UpdateInterval signals the polling goroutine to switch to a new tick interval.
 // The change takes effect at the next tick boundary. If polling has not been
 // started, the value is buffered and will be consumed when StartPolling is called.

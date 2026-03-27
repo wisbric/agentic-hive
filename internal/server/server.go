@@ -207,6 +207,12 @@ func (s *Server) routes() {
 	s.mux.Handle("DELETE /api/users/{id}", adminM(http.HandlerFunc(s.handleDeleteUser)))
 	s.mux.Handle("GET /api/admin/config", adminM(http.HandlerFunc(s.handleGetConfig)))
 
+	// Settings API
+	s.mux.Handle("GET /api/admin/settings", adminM(http.HandlerFunc(s.handleGetSettings)))
+	s.mux.Handle("PUT /api/admin/settings", adminM(http.HandlerFunc(s.handleUpdateSettings)))
+	s.mux.Handle("POST /api/admin/settings/test-oidc", adminM(http.HandlerFunc(s.handleTestOIDC)))
+	s.mux.Handle("POST /api/admin/settings/test-vault", adminM(http.HandlerFunc(s.handleTestVault)))
+
 	// Terminal WebSocket
 	s.mux.Handle("GET /ws/terminal/{server}/{session}", am(http.HandlerFunc(s.terminal.HandleTerminal)))
 
