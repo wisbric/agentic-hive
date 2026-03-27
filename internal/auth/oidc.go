@@ -148,6 +148,8 @@ func (h *OIDCHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logAuthAudit(h.store, r, store.AuditAuthLogin, user.ID, user.Username)
+
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 

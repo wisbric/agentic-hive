@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -12,8 +13,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -45,10 +48,60 @@ type idleTimeoutMsg struct {
 type Bridge struct {
 	pool        *sshpool.Pool
 	idleTimeout time.Duration
+	store       *store.Store
 }
 
-func NewBridge(pool *sshpool.Pool, idleTimeout time.Duration) *Bridge {
-	return &Bridge{pool: pool, idleTimeout: idleTimeout}
+func NewBridge(pool *sshpool.Pool, idleTimeout time.Duration, st *store.Store) *Bridge {
+	return &Bridge{pool: pool, idleTimeout: idleTimeout, store: st}
+}
+
+// clientIP extracts the real client IP from the request.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	// Strip port from RemoteAddr
+	for i := len(r.RemoteAddr) - 1; i >= 0; i-- {
+		if r.RemoteAddr[i] == ':' {
+			return r.RemoteAddr[:i]
+		}
+	}
+	return r.RemoteAddr
+}
+
+func (b *Bridge) logAudit(r *http.Request, action, targetType, targetID, details string) {
+	if b.store == nil {
+		return
+	}
+	user := auth.GetUser(r)
+	entry := store.AuditEntry{
+		Action:     action,
+		TargetType: targetType,
+		TargetID:   targetID,
+		Details:    details,
+		IPAddress:  clientIP(r),
+	}
+	if user != nil {
+		entry.UserID = user.UserID
+		entry.Username = user.Username
+	}
+	if err := b.store.LogAudit(entry); err != nil {
+		slog.Error("audit log write failed", "action", action, "error", err)
+	}
+	slog.Info("audit",
+		"action", action,
+		"user_id", entry.UserID,
+		"username", entry.Username,
+		"target_type", targetType,
+		"target_id", targetID,
+		"ip", entry.IPAddress,
+	)
 }
 
 func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +134,11 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		metrics.WebSocketConnectionsActive.Inc()
 		defer metrics.WebSocketConnectionsActive.Dec()
 	}
+
+	b.logAudit(r, store.AuditTerminalConnect, "session", sessionName,
+		fmt.Sprintf(`{"server_id":%q,"session":%q}`, serverID, sessionName))
+	defer b.logAudit(r, store.AuditTerminalDisconnect, "session", sessionName,
+		fmt.Sprintf(`{"server_id":%q,"session":%q}`, serverID, sessionName))
 
 	// done channel for watcher goroutine teardown
 	done := make(chan struct{})

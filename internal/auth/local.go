@@ -2,12 +2,51 @@ package auth
 
 import (
 	"encoding/json"
+	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// clientIPFromRequest extracts the real client IP.
+func clientIPFromRequest(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func logAuthAudit(st *store.Store, r *http.Request, action, userID, username string) {
+	entry := store.AuditEntry{
+		Action:    action,
+		UserID:    userID,
+		Username:  username,
+		IPAddress: clientIPFromRequest(r),
+	}
+	if err := st.LogAudit(entry); err != nil {
+		slog.Error("audit log write failed", "action", action, "error", err)
+	}
+	slog.Info("audit",
+		"action", action,
+		"user_id", userID,
+		"username", username,
+		"ip", entry.IPAddress,
+	)
+}
 
 type LocalHandler struct {
 	store  *store.Store
@@ -35,6 +74,7 @@ func (h *LocalHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		if metrics.AuthFailuresTotal != nil {
 			metrics.AuthFailuresTotal.WithLabelValues("invalid_credentials").Inc()
 		}
+		logAuthAudit(h.store, r, store.AuditAuthLoginFailed, "", req.Username)
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
@@ -43,6 +83,7 @@ func (h *LocalHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		if metrics.AuthFailuresTotal != nil {
 			metrics.AuthFailuresTotal.WithLabelValues("invalid_credentials").Inc()
 		}
+		logAuthAudit(h.store, r, store.AuditAuthLoginFailed, user.ID, user.Username)
 		http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
@@ -62,6 +103,8 @@ func (h *LocalHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
 		return
 	}
+
+	logAuthAudit(h.store, r, store.AuditAuthLogin, user.ID, user.Username)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{

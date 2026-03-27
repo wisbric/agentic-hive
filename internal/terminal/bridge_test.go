@@ -136,7 +136,7 @@ func TestIdleTimeoutFires(t *testing.T) {
 func TestIdleTimeoutDisabledWhenZero(t *testing.T) {
 	// Bridge with zero timeout should never call idleWatcher.
 	// We test this by checking that the Bridge struct stores zero correctly.
-	b := NewBridge(nil, 0)
+	b := NewBridge(nil, 0, nil)
 	if b.idleTimeout != 0 {
 		t.Errorf("idleTimeout = %v, want 0", b.idleTimeout)
 	}
@@ -218,7 +218,7 @@ func TestIdleTimeoutResetsOnActivity(t *testing.T) {
 
 // TestNewBridgeIdleTimeout verifies constructor stores duration correctly.
 func TestNewBridgeIdleTimeout(t *testing.T) {
-	b := NewBridge(nil, 30*time.Second)
+	b := NewBridge(nil, 30*time.Second, nil)
 	if b.idleTimeout != 30*time.Second {
 		t.Errorf("idleTimeout = %v, want 30s", b.idleTimeout)
 	}

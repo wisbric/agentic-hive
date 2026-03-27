@@ -32,12 +32,12 @@ func TestOpenAndMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query schema_version: %v", err)
 	}
-	if version < 2 {
-		t.Errorf("schema version = %d, want >= 2", version)
+	if version < 3 {
+		t.Errorf("schema version = %d, want >= 3", version)
 	}
 
 	// Verify core tables exist by querying them
-	tables := []string{"users", "servers", "ssh_keys", "session_templates", "host_keys"}
+	tables := []string{"users", "servers", "ssh_keys", "session_templates", "host_keys", "audit_log"}
 	for _, table := range tables {
 		_, err := s.db.Exec("SELECT COUNT(*) FROM " + table)
 		if err != nil {

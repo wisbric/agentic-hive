@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -181,6 +183,56 @@ func HandleLogout(w http.ResponseWriter, r *http.Request) {
 	ClearSessionCookie(w)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// Logout returns an http.HandlerFunc that clears the session cookie and logs the
+// auth.logout audit event to the given store.
+func Logout(st *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := GetUser(r)
+		ClearSessionCookie(w)
+
+		if st != nil {
+			entry := store.AuditEntry{
+				Action:    store.AuditAuthLogout,
+				IPAddress: clientIPAuth(r),
+			}
+			if user != nil {
+				entry.UserID = user.UserID
+				entry.Username = user.Username
+			}
+			if err := st.LogAudit(entry); err != nil {
+				// best-effort; do not fail the logout
+			}
+			slog.Info("audit",
+				"action", store.AuditAuthLogout,
+				"user_id", entry.UserID,
+				"username", entry.Username,
+				"ip", entry.IPAddress,
+			)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}
+}
+
+// clientIPAuth extracts client IP from a request (local helper for auth package).
+func clientIPAuth(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 // jwtFailureReason classifies a JWT verification error into a metric label value.

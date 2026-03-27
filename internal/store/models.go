@@ -2,6 +2,18 @@ package store
 
 import "time"
 
+type AuditEntry struct {
+	ID         string
+	Timestamp  time.Time
+	UserID     string
+	Username   string
+	Action     string
+	TargetType string
+	TargetID   string
+	Details    string
+	IPAddress  string
+}
+
 const (
 	RoleAdmin = "admin"
 	RoleUser  = "user"

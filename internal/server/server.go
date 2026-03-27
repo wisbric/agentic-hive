@@ -47,7 +47,7 @@ func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.Ke
 		pool:        pool,
 		keyStore:    ks,
 		sessions:    sm,
-		terminal:    terminal.NewBridge(pool, time.Duration(cfg.TerminalIdleTimeout)*time.Second),
+		terminal:    terminal.NewBridge(pool, time.Duration(cfg.TerminalIdleTimeout)*time.Second, st),
 		staticFS:    staticFS,
 	}
 	s.routes()
@@ -162,7 +162,7 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/auth/login", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleLogin)))
 	s.mux.Handle("POST /api/auth/setup", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleSetup)))
 	s.mux.HandleFunc("GET /api/auth/setup/status", s.handleSetupStatus)
-	s.mux.HandleFunc("POST /api/auth/logout", auth.HandleLogout)
+	s.mux.Handle("POST /api/auth/logout", am(auth.Logout(s.store)))
 
 	// Servers
 	s.mux.Handle("GET /api/servers", am(http.HandlerFunc(s.handleListServers)))
@@ -181,6 +181,7 @@ func (s *Server) routes() {
 
 	// Admin
 	s.mux.Handle("POST /api/admin/backup", adminM(http.HandlerFunc(s.handleBackup)))
+	s.mux.Handle("GET /api/admin/audit", adminM(http.HandlerFunc(s.handleListAuditLog)))
 
 	// Terminal WebSocket
 	s.mux.Handle("GET /ws/terminal/{server}/{session}", am(http.HandlerFunc(s.terminal.HandleTerminal)))
@@ -306,6 +307,10 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := auth.GetUser(r)
+	logAudit(s, r, user, store.AuditServerCreate, "server", srv.ID,
+		fmt.Sprintf(`{"server_id":%q,"name":%q}`, srv.ID, srv.Name))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(srv)
@@ -322,6 +327,11 @@ func (s *Server) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to delete server", http.StatusInternalServerError)
 		return
 	}
+
+	user := auth.GetUser(r)
+	logAudit(s, r, user, store.AuditServerDelete, "server", id,
+		fmt.Sprintf(`{"server_id":%q}`, id))
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
@@ -344,12 +354,18 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 	_, _, err = s.pool.Exec(r.Context(), id, "echo ok")
 	if err != nil {
 		_ = s.store.UpdateServerStatus(id, store.StatusUnreachable)
+		user := auth.GetUser(r)
+		logAudit(s, r, user, store.AuditServerKeyUpload, "server", id,
+			fmt.Sprintf(`{"server_id":%q,"reachable":false}`, id))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{"status": "key_saved", "reachable": false, "error": err.Error()})
 		return
 	}
 
 	_ = s.store.UpdateServerStatus(id, store.StatusReachable)
+	user := auth.GetUser(r)
+	logAudit(s, r, user, store.AuditServerKeyUpload, "server", id,
+		fmt.Sprintf(`{"server_id":%q,"reachable":true}`, id))
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "reachable": true})
 }
@@ -388,6 +404,9 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logAudit(s, r, user, store.AuditSessionCreate, "session", name,
+		fmt.Sprintf(`{"server_id":%q,"session":%q}`, id, name))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"name": name})
@@ -401,6 +420,10 @@ func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	user := auth.GetUser(r)
+	logAudit(s, r, user, store.AuditSessionKill, "session", sessionName,
+		fmt.Sprintf(`{"server_id":%q,"session":%q}`, serverID, sessionName))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
