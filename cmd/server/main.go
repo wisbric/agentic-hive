@@ -22,6 +22,10 @@ var embeddedStatic embed.FS
 func main() {
 	cfg := config.Load()
 
+	if cfg.SessionSecret == "" {
+		log.Fatalf("OVERLAY_SESSION_SECRET must be set (generate with: openssl rand -hex 32)")
+	}
+
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)

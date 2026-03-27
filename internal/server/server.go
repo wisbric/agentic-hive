@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -106,6 +105,12 @@ func (s *Server) routes() {
 			w.Write(data)
 		})
 	}
+}
+
+func jsonError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +240,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 	name, err := s.sessions.CreateSession(r.Context(), id, username, req.Label, req.Command, req.Workdir)
 	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -249,7 +254,7 @@ func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 	sessionName := r.PathValue("name")
 
 	if err := s.sessions.KillSession(r.Context(), serverID, sessionName); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

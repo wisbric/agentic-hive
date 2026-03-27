@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -12,8 +14,18 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var safeSessionNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // non-browser clients
+		}
+		// Allow same-origin
+		host := r.Host
+		return strings.HasSuffix(origin, "://"+host)
+	},
 }
 
 type resizeMsg struct {
@@ -41,6 +53,12 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 	}
 	if rows == 0 {
 		rows = 24
+	}
+
+	// Validate session name before upgrading
+	if !safeSessionNameRe.MatchString(sessionName) {
+		http.Error(w, `{"error":"invalid session name"}`, http.StatusBadRequest)
+		return
 	}
 
 	// Upgrade to WebSocket
@@ -86,7 +104,7 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start tmux attach command
+	// Start tmux attach command (sessionName already validated as safe)
 	cmd := "tmux new -A -s " + sessionName
 	if err := sshSession.Start(cmd); err != nil {
 		log.Printf("start command failed: %v", err)

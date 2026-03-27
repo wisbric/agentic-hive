@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +15,24 @@ import (
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
 )
+
+var safeNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+func sanitizeName(s string) string {
+	result := make([]byte, 0, len(s))
+	for _, b := range []byte(s) {
+		if (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '-' || b == '_' {
+			result = append(result, b)
+		} else {
+			result = append(result, '_')
+		}
+	}
+	return string(result)
+}
+
+func shellEscape(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
 
 type Session struct {
 	Name         string `json:"name"`
@@ -76,14 +95,14 @@ func (m *Manager) CreateSession(ctx context.Context, serverID, user, label, comm
 	}
 
 	shortID := randomShortID()
-	name := fmt.Sprintf("%s-%s-%s", user, label, shortID)
+	name := fmt.Sprintf("%s-%s-%s", sanitizeName(user), sanitizeName(label), shortID)
 
 	cmd := fmt.Sprintf("tmux new-session -d -s %s", name)
 	if workdir != "" {
-		cmd += fmt.Sprintf(" -c %s", workdir)
+		cmd += fmt.Sprintf(" -c %s", shellEscape(workdir))
 	}
 	if command != "" {
-		cmd += fmt.Sprintf(" '%s'", command)
+		cmd += fmt.Sprintf(" %s", shellEscape(command))
 	}
 
 	_, stderr, err := m.pool.Exec(ctx, serverID, cmd)
@@ -95,6 +114,9 @@ func (m *Manager) CreateSession(ctx context.Context, serverID, user, label, comm
 }
 
 func (m *Manager) KillSession(ctx context.Context, serverID, sessionName string) error {
+	if !safeNameRe.MatchString(sessionName) {
+		return fmt.Errorf("invalid session name: %s", sessionName)
+	}
 	cmd := fmt.Sprintf("tmux kill-session -t %s", sessionName)
 	_, stderr, err := m.pool.Exec(ctx, serverID, cmd)
 	if err != nil {
