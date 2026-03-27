@@ -37,7 +37,7 @@ func testServer(t *testing.T) *Server {
 		LoginRateWindow: 900,
 	}
 
-	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	ks := keystore.NewSwappable(keystore.NewLocal(st.DB(), cfg.SessionSecret))
 	pool := sshpool.New(st, ks)
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
@@ -127,7 +127,7 @@ func TestReadyzRequireServerNoServers(t *testing.T) {
 		LoginRateWindow:     900,
 	}
 
-	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	ks := keystore.NewSwappable(keystore.NewLocal(st.DB(), cfg.SessionSecret))
 	pool := sshpool.New(st, ks)
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
@@ -184,7 +184,7 @@ func TestReadyzRequireServerUnreachable(t *testing.T) {
 		LoginRateWindow:     900,
 	}
 
-	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	ks := keystore.NewSwappable(keystore.NewLocal(st.DB(), cfg.SessionSecret))
 	pool := sshpool.New(st, ks)
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
@@ -244,7 +244,7 @@ func TestReadyzRequireServerReachable(t *testing.T) {
 		LoginRateWindow:     900,
 	}
 
-	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	ks := keystore.NewSwappable(keystore.NewLocal(st.DB(), cfg.SessionSecret))
 	pool := sshpool.New(st, ks)
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
@@ -463,7 +463,7 @@ func TestLoginRateLimit(t *testing.T) {
 		LoginRateWindow: 900,
 	}
 
-	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	ks := keystore.NewSwappable(keystore.NewLocal(st.DB(), cfg.SessionSecret))
 	pool := sshpool.New(st, ks)
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
@@ -524,7 +524,7 @@ func TestLoginRateLimitConfigurable(t *testing.T) {
 		LoginRateWindow: 900,
 	}
 
-	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	ks := keystore.NewSwappable(keystore.NewLocal(st.DB(), cfg.SessionSecret))
 	pool := sshpool.New(st, ks)
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)

@@ -101,10 +101,10 @@ func main() {
 	}
 
 	// Initialize KeyStore
-	var ks keystore.KeyStore
+	var innerKS keystore.KeyStore
 	switch cfg.KeyStoreBackend {
 	case "vault":
-		ks, err = keystore.NewVault(cfg.VaultAddr, cfg.VaultToken, cfg.VaultSecretPath)
+		innerKS, err = keystore.NewVault(cfg.VaultAddr, cfg.VaultToken, cfg.VaultSecretPath)
 		if err != nil {
 			slog.Error("failed to initialize vault keystore", "error", err)
 			os.Exit(1)
@@ -116,9 +116,10 @@ func main() {
 			slog.Warn("OVERLAY_ENCRYPTION_SECRET not set, falling back to SESSION_SECRET for key encryption — set a separate secret in production")
 			encSecret = cfg.SessionSecret
 		}
-		ks = keystore.NewLocal(st.DB(), encSecret)
+		innerKS = keystore.NewLocal(st.DB(), encSecret)
 		slog.Info("keystore initialized", "backend", "local")
 	}
+	ks := keystore.NewSwappable(innerKS)
 
 	// Initialize SSH Pool and Session Manager
 	pool := sshpool.New(st, ks)

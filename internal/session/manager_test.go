@@ -2,6 +2,7 @@ package session
 
 import (
 	"testing"
+	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
@@ -75,5 +76,38 @@ func TestRandomShortID(t *testing.T) {
 	id2 := randomShortID()
 	if id == id2 {
 		t.Error("two random IDs should not be identical")
+	}
+}
+
+func TestManagerUpdateInterval(t *testing.T) {
+	m := NewManager(nil, nil)
+
+	// UpdateInterval should not block even before StartPolling is called.
+	done := make(chan struct{})
+	go func() {
+		m.UpdateInterval(5 * time.Second)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// success: call returned without blocking
+	case <-time.After(time.Second):
+		t.Fatal("UpdateInterval blocked for more than 1 second")
+	}
+
+	// Calling UpdateInterval multiple times should drain the old value and
+	// replace it with the new one without blocking.
+	m.UpdateInterval(10 * time.Second)
+	m.UpdateInterval(20 * time.Second)
+
+	// The channel should hold the last written value.
+	select {
+	case d := <-m.intervalCh:
+		if d != 20*time.Second {
+			t.Errorf("intervalCh value = %v, want 20s", d)
+		}
+	default:
+		t.Error("expected a value in intervalCh")
 	}
 }

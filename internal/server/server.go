@@ -32,20 +32,22 @@ type Server struct {
 	httpServer  *http.Server
 	localAuth   *auth.LocalHandler
 	rateLimiter *auth.RateLimiter
+	oidcHandler *auth.SwappableOIDCHandler
 	pool        *sshpool.Pool
-	keyStore    keystore.KeyStore
+	keyStore    *keystore.SwappableKeyStore
 	sessions    *session.Manager
 	terminal    *terminal.Bridge
 	staticFS    fs.FS
 }
 
-func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.KeyStore, sm *session.Manager, staticFS fs.FS) *Server {
+func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks *keystore.SwappableKeyStore, sm *session.Manager, staticFS fs.FS) *Server {
 	s := &Server{
 		cfg:         cfg,
 		store:       st,
 		mux:         http.NewServeMux(),
 		localAuth:   auth.NewLocalHandler(st, cfg.SessionSecret),
 		rateLimiter: auth.NewRateLimiter(cfg.LoginRateLimit, cfg.LoginRateWindow),
+		oidcHandler: auth.NewSwappableOIDCHandler(nil),
 		pool:        pool,
 		keyStore:    ks,
 		sessions:    sm,
@@ -60,9 +62,15 @@ func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.Ke
 	return s
 }
 
+// SetOIDCHandler hot-swaps the OIDC handler. Routes are always registered at
+// startup; this method only updates the handler the routes dispatch to.
 func SetOIDCHandler(s *Server, h *auth.OIDCHandler) {
-	s.mux.HandleFunc("GET /api/auth/oidc/login", h.HandleLogin)
-	s.mux.HandleFunc("GET /api/auth/oidc/callback", h.HandleCallback)
+	s.oidcHandler.Swap(h)
+}
+
+// OIDCHandler returns the swappable OIDC handler held by the server.
+func (s *Server) OIDCHandler() *auth.SwappableOIDCHandler {
+	return s.oidcHandler
 }
 
 type responseRecorder struct {
@@ -172,6 +180,10 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/auth/setup", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleSetup)))
 	s.mux.HandleFunc("GET /api/auth/setup/status", s.handleSetupStatus)
 	s.mux.Handle("POST /api/auth/logout", am(auth.Logout(s.store)))
+
+	// OIDC routes — always registered; return 404 when not configured
+	s.mux.HandleFunc("GET /api/auth/oidc/login", s.oidcHandler.HandleLogin)
+	s.mux.HandleFunc("GET /api/auth/oidc/callback", s.oidcHandler.HandleCallback)
 
 	// Servers
 	s.mux.Handle("GET /api/servers", am(http.HandlerFunc(s.handleListServers)))

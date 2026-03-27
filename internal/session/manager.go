@@ -41,19 +41,21 @@ type Session struct {
 }
 
 type Manager struct {
-	store    *store.Store
-	pool     *sshpool.Pool
-	sessions map[string][]Session // keyed by server ID
-	mu       sync.RWMutex
-	stopCh   chan struct{}
+	store      *store.Store
+	pool       *sshpool.Pool
+	sessions   map[string][]Session // keyed by server ID
+	mu         sync.RWMutex
+	stopCh     chan struct{}
+	intervalCh chan time.Duration
 }
 
 func NewManager(st *store.Store, pool *sshpool.Pool) *Manager {
 	return &Manager{
-		store:    st,
-		pool:     pool,
-		sessions: make(map[string][]Session),
-		stopCh:   make(chan struct{}),
+		store:      st,
+		pool:       pool,
+		sessions:   make(map[string][]Session),
+		stopCh:     make(chan struct{}),
+		intervalCh: make(chan time.Duration, 1),
 	}
 }
 
@@ -126,6 +128,8 @@ func (m *Manager) StartPolling(ctx context.Context, interval time.Duration) {
 			select {
 			case <-ticker.C:
 				m.pollAll(ctx)
+			case newInterval := <-m.intervalCh:
+				ticker.Reset(newInterval)
 			case <-m.stopCh:
 				return
 			case <-ctx.Done():
@@ -133,6 +137,18 @@ func (m *Manager) StartPolling(ctx context.Context, interval time.Duration) {
 			}
 		}
 	}()
+}
+
+// UpdateInterval signals the polling goroutine to switch to a new tick interval.
+// The change takes effect at the next tick boundary. If polling has not been
+// started, the value is buffered and will be consumed when StartPolling is called.
+func (m *Manager) UpdateInterval(d time.Duration) {
+	// Drain any pending value so we don't block on a full channel.
+	select {
+	case <-m.intervalCh:
+	default:
+	}
+	m.intervalCh <- d
 }
 
 func (m *Manager) Stop() {
