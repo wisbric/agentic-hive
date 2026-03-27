@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -43,12 +44,32 @@ func (p *Pool) connect(ctx context.Context, serverID string) (*ssh.Client, error
 		return nil, fmt.Errorf("parse private key: %w", err)
 	}
 
+	hostKeyCallback := func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		presented := key.Marshal()
+		storedKey, storedFP, err := p.store.GetHostKey(serverID)
+		if err != nil {
+			// No stored key — first connect, trust and store (TOFU).
+			fp := ssh.FingerprintSHA256(key)
+			if storeErr := p.store.StoreHostKey(serverID, presented, fp); storeErr != nil {
+				return fmt.Errorf("store host key: %w", storeErr)
+			}
+			return nil
+		}
+		// Key already stored — verify it matches.
+		if bytes.Equal(storedKey, presented) {
+			return nil
+		}
+		_ = p.store.UpdateServerStatus(serverID, store.StatusKeyMismatch)
+		return fmt.Errorf("host key mismatch for server %s: stored fingerprint %s, got %s",
+			serverID, storedFP, ssh.FingerprintSHA256(key))
+	}
+
 	config := &ssh.ClientConfig{
 		User: srv.SSHUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
 	}
 

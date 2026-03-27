@@ -85,6 +85,7 @@ func (s *Server) routes() {
 	s.mux.Handle("POST /api/servers", adminM(http.HandlerFunc(s.handleCreateServer)))
 	s.mux.Handle("DELETE /api/servers/{id}", adminM(http.HandlerFunc(s.handleDeleteServer)))
 	s.mux.Handle("PUT /api/servers/{id}/key", adminM(http.HandlerFunc(s.handleUploadKey)))
+	s.mux.Handle("POST /api/servers/{id}/accept-key", adminM(http.HandlerFunc(s.handleAcceptKey))) // TODO(PRP-9): restrict to admin
 
 	// Sessions
 	s.mux.Handle("GET /api/servers/{id}/sessions", am(http.HandlerFunc(s.handleListSessions)))
@@ -327,4 +328,15 @@ func (s *Server) handleListTemplates(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(templates)
+}
+
+func (s *Server) handleAcceptKey(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.store.DeleteHostKey(id); err != nil {
+		jsonError(w, "failed to clear host key", http.StatusInternalServerError)
+		return
+	}
+	s.pool.Remove(id)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

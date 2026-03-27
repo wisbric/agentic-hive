@@ -26,18 +26,18 @@ func TestOpenAndMigrate(t *testing.T) {
 	}
 	defer s.Close()
 
-	// Verify the schema_version table exists and has version 1
+	// Verify the schema_version table exists and has the latest version
 	var version int
 	err = s.db.QueryRow("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").Scan(&version)
 	if err != nil {
 		t.Fatalf("query schema_version: %v", err)
 	}
-	if version != 1 {
-		t.Errorf("schema version = %d, want 1", version)
+	if version < 2 {
+		t.Errorf("schema version = %d, want >= 2", version)
 	}
 
 	// Verify core tables exist by querying them
-	tables := []string{"users", "servers", "ssh_keys", "session_templates"}
+	tables := []string{"users", "servers", "ssh_keys", "session_templates", "host_keys"}
 	for _, table := range tables {
 		_, err := s.db.Exec("SELECT COUNT(*) FROM " + table)
 		if err != nil {

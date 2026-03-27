@@ -9,6 +9,7 @@ const (
 	StatusUnknown     = "unknown"
 	StatusReachable   = "reachable"
 	StatusUnreachable = "unreachable"
+	StatusKeyMismatch = "key_mismatch"
 )
 
 type User struct {
