@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const testSecret = "test-secret-that-is-long-enough-32chars!"
@@ -364,5 +366,131 @@ func TestUserRouteAccessibleWithUserRole(t *testing.T) {
 	srv.Handler().ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("GET /api/servers with user role: status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func hashPassword(password string) (string, error) {
+	h, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	if err != nil {
+		return "", err
+	}
+	return string(h), nil
+}
+
+// TestLoginRateLimit verifies that 5 failed login attempts return 401 and the 6th returns 429.
+func TestLoginRateLimit(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open failed: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	cfg := &config.Config{
+		Listen:          ":0",
+		AuthMode:        "local",
+		SessionSecret:   testSecret,
+		LoginRateLimit:  5,
+		LoginRateWindow: 900,
+	}
+
+	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	pool := sshpool.New(st, ks)
+	t.Cleanup(func() { pool.Close() })
+	sm := session.NewManager(st, pool)
+	srv := New(cfg, st, pool, ks, sm, nil)
+	t.Cleanup(func() { srv.Close() })
+
+	// Seed a user so login attempts with wrong password return 401
+	hash, err := hashPassword("correct-password")
+	if err != nil {
+		t.Fatalf("hashPassword: %v", err)
+	}
+	if _, err := st.CreateUser("admin", hash, store.RoleAdmin); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+
+	wrongBody := `{"username":"admin","password":"wrong"}`
+
+	// First 5 attempts with wrong password must return 401
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "10.10.10.10:9999"
+		w := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("attempt %d: got %d, want 401", i+1, w.Code)
+		}
+	}
+
+	// 6th attempt must be 429 with Retry-After header
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "10.10.10.10:9999"
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("6th attempt: got %d, want 429", w.Code)
+	}
+	if w.Header().Get("Retry-After") == "" {
+		t.Error("6th attempt: Retry-After header missing")
+	}
+}
+
+// TestLoginRateLimitConfigurable verifies OVERLAY_LOGIN_RATE_LIMIT=3 causes 429 on the 4th attempt.
+func TestLoginRateLimitConfigurable(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open failed: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	cfg := &config.Config{
+		Listen:          ":0",
+		AuthMode:        "local",
+		SessionSecret:   testSecret,
+		LoginRateLimit:  3,
+		LoginRateWindow: 900,
+	}
+
+	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	pool := sshpool.New(st, ks)
+	t.Cleanup(func() { pool.Close() })
+	sm := session.NewManager(st, pool)
+	srv := New(cfg, st, pool, ks, sm, nil)
+	t.Cleanup(func() { srv.Close() })
+
+	hash, err := hashPassword("correct-password")
+	if err != nil {
+		t.Fatalf("hashPassword: %v", err)
+	}
+	if _, err := st.CreateUser("admin", hash, store.RoleAdmin); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+
+	wrongBody := `{"username":"admin","password":"wrong"}`
+
+	// 3 failures — all should be 401
+	for i := 0; i < 3; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "10.20.30.40:1234"
+		w := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("attempt %d: got %d, want 401", i+1, w.Code)
+		}
+	}
+
+	// 4th attempt — must be 429
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "10.20.30.40:1234"
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("4th attempt with limit=3: got %d, want 429", w.Code)
 	}
 }
