@@ -5,6 +5,8 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+imagePullSecrets: []
+
 auth:
   mode: local
   local:
