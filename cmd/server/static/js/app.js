@@ -275,10 +275,207 @@
       document.getElementById('admin-config-poll').textContent = (cfg.pollInterval || 30) + 's';
 
       await refreshUserList();
+      await loadSettings();
     } catch (e) {
       adminSection.style.display = 'none';
     }
   }
+
+  // --- Settings ---
+
+  function setFieldFromSetting(inputId, labelId, setting) {
+    if (!setting) return;
+    const input = document.getElementById(inputId);
+    const label = document.getElementById(labelId);
+    if (!input) return;
+
+    if (setting.source === 'env') {
+      input.readOnly = true;
+      input.value = setting.value || '';
+      // Add (env) badge to label if not already present
+      if (label && !label.querySelector('.env-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'env-badge';
+        badge.textContent = 'env';
+        label.appendChild(badge);
+      }
+    } else {
+      input.readOnly = false;
+      input.value = setting.value || '';
+    }
+  }
+
+  function setSecretFieldFromSetting(inputId, labelId, setting) {
+    if (!setting) return;
+    const input = document.getElementById(inputId);
+    const label = document.getElementById(labelId);
+    if (!input) return;
+
+    if (setting.source === 'env') {
+      input.readOnly = true;
+      input.placeholder = setting.is_set ? '****' : 'Not set';
+      if (label && !label.querySelector('.env-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'env-badge';
+        badge.textContent = 'env';
+        label.appendChild(badge);
+      }
+    } else {
+      input.readOnly = false;
+      input.placeholder = setting.is_set ? '****' : 'Leave blank to keep current';
+    }
+    // Never populate secret values — leave empty so user must type to change
+    input.value = '';
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await api('GET', '/api/admin/settings');
+      if (!res.ok) return;
+      const s = await res.json();
+
+      // OIDC fields
+      setFieldFromSetting('oidc-issuer-url',   'lbl-oidc-issuer-url',   s['oidc.issuer_url']);
+      setFieldFromSetting('oidc-client-id',    'lbl-oidc-client-id',    s['oidc.client_id']);
+      setSecretFieldFromSetting('oidc-client-secret', 'lbl-oidc-client-secret', s['oidc.client_secret']);
+      setFieldFromSetting('oidc-redirect-url', 'lbl-oidc-redirect-url', s['oidc.redirect_url']);
+      setFieldFromSetting('oidc-roles-claim',  'lbl-oidc-roles-claim',  s['oidc.roles_claim']);
+      setFieldFromSetting('oidc-admin-group',  'lbl-oidc-admin-group',  s['oidc.admin_group']);
+
+      // Vault fields
+      setFieldFromSetting('vault-address',     'lbl-vault-address',     s['vault.address']);
+      setSecretFieldFromSetting('vault-token', 'lbl-vault-token',       s['vault.token']);
+      setFieldFromSetting('vault-secret-path', 'lbl-vault-secret-path', s['vault.secret_path']);
+
+      // General fields
+      setFieldFromSetting('general-poll-interval', 'lbl-general-poll-interval', s['general.poll_interval']);
+    } catch (e) {
+      // Settings endpoint may not exist yet — fail silently
+    }
+  }
+
+  function showStatus(elementId, message, isError) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.textContent = message;
+    el.className = 'settings-status ' + (isError ? 'error' : 'success');
+    setTimeout(() => { el.textContent = ''; el.className = 'settings-status'; }, 5000);
+  }
+
+  function collectFormValues(fields) {
+    const values = {};
+    fields.forEach(({ key, inputId, isSecret }) => {
+      const input = document.getElementById(inputId);
+      if (!input || input.readOnly) return;
+      const val = input.value.trim();
+      if (isSecret && val === '') return; // Don't send blank secret
+      values[key] = val;
+    });
+    return values;
+  }
+
+  document.getElementById('oidc-settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveOIDCSettings();
+  });
+
+  document.getElementById('vault-settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveVaultSettings();
+  });
+
+  document.getElementById('general-settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveGeneralSettings();
+  });
+
+  async function saveOIDCSettings() {
+    const values = collectFormValues([
+      { key: 'oidc.issuer_url',    inputId: 'oidc-issuer-url' },
+      { key: 'oidc.client_id',     inputId: 'oidc-client-id' },
+      { key: 'oidc.client_secret', inputId: 'oidc-client-secret', isSecret: true },
+      { key: 'oidc.redirect_url',  inputId: 'oidc-redirect-url' },
+      { key: 'oidc.roles_claim',   inputId: 'oidc-roles-claim' },
+      { key: 'oidc.admin_group',   inputId: 'oidc-admin-group' },
+    ]);
+    try {
+      const res = await api('PUT', '/api/admin/settings', values);
+      if (res.ok) {
+        showStatus('oidc-status', 'OIDC settings saved.', false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showStatus('oidc-status', 'Save failed: ' + (data.error || res.status), true);
+      }
+    } catch (e) {
+      showStatus('oidc-status', 'Save failed: ' + e.message, true);
+    }
+  }
+
+  async function saveVaultSettings() {
+    const values = collectFormValues([
+      { key: 'vault.address',     inputId: 'vault-address' },
+      { key: 'vault.token',       inputId: 'vault-token', isSecret: true },
+      { key: 'vault.secret_path', inputId: 'vault-secret-path' },
+    ]);
+    try {
+      const res = await api('PUT', '/api/admin/settings', values);
+      if (res.ok) {
+        showStatus('vault-status', 'Vault settings saved.', false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showStatus('vault-status', 'Save failed: ' + (data.error || res.status), true);
+      }
+    } catch (e) {
+      showStatus('vault-status', 'Save failed: ' + e.message, true);
+    }
+  }
+
+  async function saveGeneralSettings() {
+    const values = collectFormValues([
+      { key: 'general.poll_interval', inputId: 'general-poll-interval' },
+    ]);
+    try {
+      const res = await api('PUT', '/api/admin/settings', values);
+      if (res.ok) {
+        showStatus('general-status', 'General settings saved.', false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showStatus('general-status', 'Save failed: ' + (data.error || res.status), true);
+      }
+    } catch (e) {
+      showStatus('general-status', 'Save failed: ' + e.message, true);
+    }
+  }
+
+  window.testOIDC = async function() {
+    showStatus('oidc-status', 'Testing OIDC connection...', false);
+    try {
+      const res = await api('POST', '/api/admin/settings/test-oidc');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showStatus('oidc-status', data.message || 'OIDC connection OK.', false);
+      } else {
+        showStatus('oidc-status', 'Test failed: ' + (data.error || res.status), true);
+      }
+    } catch (e) {
+      showStatus('oidc-status', 'Test failed: ' + e.message, true);
+    }
+  };
+
+  window.testVault = async function() {
+    showStatus('vault-status', 'Testing Vault connection...', false);
+    try {
+      const res = await api('POST', '/api/admin/settings/test-vault');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showStatus('vault-status', data.message || 'Vault connection OK.', false);
+      } else {
+        showStatus('vault-status', 'Test failed: ' + (data.error || res.status), true);
+      }
+    } catch (e) {
+      showStatus('vault-status', 'Test failed: ' + e.message, true);
+    }
+  };
 
   async function refreshUserList() {
     const container = document.getElementById('admin-users-list');
