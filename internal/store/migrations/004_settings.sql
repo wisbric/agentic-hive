@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO schema_version (version) VALUES (4);
