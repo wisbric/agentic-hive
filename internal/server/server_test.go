@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -27,9 +28,11 @@ func testServer(t *testing.T) *Server {
 	t.Cleanup(func() { st.Close() })
 
 	cfg := &config.Config{
-		Listen:        ":0",
-		AuthMode:      "local",
-		SessionSecret: testSecret,
+		Listen:          ":0",
+		AuthMode:        "local",
+		SessionSecret:   testSecret,
+		LoginRateLimit:  5,
+		LoginRateWindow: 900,
 	}
 
 	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
@@ -67,6 +70,208 @@ func TestReadyz(t *testing.T) {
 	srv.Handler().ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestReadyzResponseShape(t *testing.T) {
+	srv := testServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if body["status"] != "ok" {
+		t.Errorf("status = %q, want \"ok\"", body["status"])
+	}
+
+	checks, ok := body["checks"].(map[string]any)
+	if !ok {
+		t.Fatalf("checks is not a map: %T", body["checks"])
+	}
+
+	if checks["database"] != "ok" {
+		t.Errorf("checks.database = %q, want \"ok\"", checks["database"])
+	}
+
+	if checks["servers"] != "disabled" {
+		t.Errorf("checks.servers = %q, want \"disabled\" (ReadyzRequireServer is false)", checks["servers"])
+	}
+}
+
+func TestReadyzRequireServerNoServers(t *testing.T) {
+	// With OVERLAY_READYZ_REQUIRE_SERVER=true and no servers registered,
+	// the probe should still return 200 (freshly deployed state is not a fault).
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open failed: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	cfg := &config.Config{
+		Listen:              ":0",
+		AuthMode:            "local",
+		SessionSecret:       testSecret,
+		ReadyzRequireServer: true,
+		LoginRateLimit:      5,
+		LoginRateWindow:     900,
+	}
+
+	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	pool := sshpool.New(st, ks)
+	t.Cleanup(func() { pool.Close() })
+	sm := session.NewManager(st, pool)
+	srv := New(cfg, st, pool, ks, sm, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d (no servers = ok)", w.Code, http.StatusOK)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	checks, ok := body["checks"].(map[string]any)
+	if !ok {
+		t.Fatalf("checks is not a map: %T", body["checks"])
+	}
+
+	if checks["servers"] != "ok" {
+		t.Errorf("checks.servers = %q, want \"ok\" (no servers registered)", checks["servers"])
+	}
+}
+
+func TestReadyzRequireServerUnreachable(t *testing.T) {
+	// With OVERLAY_READYZ_REQUIRE_SERVER=true and all servers unreachable,
+	// the probe should return 503.
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open failed: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	// Register a server but set it to unreachable
+	srv2, err := st.CreateServer("test", "192.0.2.1", 22, "root")
+	if err != nil {
+		t.Fatalf("CreateServer failed: %v", err)
+	}
+	if err := st.UpdateServerStatus(srv2.ID, store.StatusUnreachable); err != nil {
+		t.Fatalf("UpdateServerStatus failed: %v", err)
+	}
+
+	cfg := &config.Config{
+		Listen:              ":0",
+		AuthMode:            "local",
+		SessionSecret:       testSecret,
+		ReadyzRequireServer: true,
+		LoginRateLimit:      5,
+		LoginRateWindow:     900,
+	}
+
+	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	pool := sshpool.New(st, ks)
+	t.Cleanup(func() { pool.Close() })
+	sm := session.NewManager(st, pool)
+	s := New(cfg, st, pool, ks, sm, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d (all servers unreachable)", w.Code, http.StatusServiceUnavailable)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if body["status"] != "fail" {
+		t.Errorf("status = %q, want \"fail\"", body["status"])
+	}
+
+	checks, ok := body["checks"].(map[string]any)
+	if !ok {
+		t.Fatalf("checks is not a map: %T", body["checks"])
+	}
+
+	if checks["servers"] != "no reachable servers" {
+		t.Errorf("checks.servers = %q, want \"no reachable servers\"", checks["servers"])
+	}
+}
+
+func TestReadyzRequireServerReachable(t *testing.T) {
+	// With OVERLAY_READYZ_REQUIRE_SERVER=true and at least one reachable server,
+	// the probe should return 200.
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open failed: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	srv2, err := st.CreateServer("test", "192.0.2.1", 22, "root")
+	if err != nil {
+		t.Fatalf("CreateServer failed: %v", err)
+	}
+	if err := st.UpdateServerStatus(srv2.ID, store.StatusReachable); err != nil {
+		t.Fatalf("UpdateServerStatus failed: %v", err)
+	}
+
+	cfg := &config.Config{
+		Listen:              ":0",
+		AuthMode:            "local",
+		SessionSecret:       testSecret,
+		ReadyzRequireServer: true,
+		LoginRateLimit:      5,
+		LoginRateWindow:     900,
+	}
+
+	ks := keystore.NewLocal(st.DB(), cfg.SessionSecret)
+	pool := sshpool.New(st, ks)
+	t.Cleanup(func() { pool.Close() })
+	sm := session.NewManager(st, pool)
+	s := New(cfg, st, pool, ks, sm, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d (one reachable server)", w.Code, http.StatusOK)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if body["status"] != "ok" {
+		t.Errorf("status = %q, want \"ok\"", body["status"])
+	}
+
+	checks, ok := body["checks"].(map[string]any)
+	if !ok {
+		t.Fatalf("checks is not a map: %T", body["checks"])
+	}
+
+	if checks["servers"] != "ok" {
+		t.Errorf("checks.servers = %q, want \"ok\"", checks["servers"])
 	}
 }
 

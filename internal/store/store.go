@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
@@ -47,6 +48,11 @@ func (s *Store) Close() error {
 
 func (s *Store) DB() *sql.DB {
 	return s.db
+}
+
+func (s *Store) Ping(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, "SELECT 1")
+	return err
 }
 
 func (s *Store) migrate() error {

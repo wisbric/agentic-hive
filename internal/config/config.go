@@ -29,6 +29,13 @@ type Config struct {
 
 	// Emergency local auth when OIDC is primary
 	EmergencyLocalAuth bool
+
+	// Login rate limiting
+	LoginRateLimit  int // max failed attempts per window (default 5)
+	LoginRateWindow int // window size in seconds (default 900)
+
+	// Readiness probe
+	ReadyzRequireServer bool
 }
 
 func Load() *Config {
@@ -53,6 +60,11 @@ func Load() *Config {
 		VaultSecretPath: envOr("OVERLAY_VAULT_SECRET_PATH", "secret/agentic-hive/ssh-keys"),
 
 		EmergencyLocalAuth: envOr("OVERLAY_EMERGENCY_LOCAL_AUTH", "") == "true",
+
+		ReadyzRequireServer: envOr("OVERLAY_READYZ_REQUIRE_SERVER", "") == "true",
+
+		LoginRateLimit:  envIntOr("OVERLAY_LOGIN_RATE_LIMIT", 5),
+		LoginRateWindow: envIntOr("OVERLAY_LOGIN_RATE_WINDOW", 900),
 	}
 }
 

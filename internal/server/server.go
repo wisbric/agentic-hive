@@ -1,11 +1,13 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"io/fs"
 	"log"
 	"net/http"
+	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
@@ -17,28 +19,30 @@ import (
 )
 
 type Server struct {
-	cfg       *config.Config
-	store     *store.Store
-	mux       *http.ServeMux
-	localAuth *auth.LocalHandler
-	pool      *sshpool.Pool
-	keyStore  keystore.KeyStore
-	sessions  *session.Manager
-	terminal  *terminal.Bridge
-	staticFS  fs.FS
+	cfg         *config.Config
+	store       *store.Store
+	mux         *http.ServeMux
+	localAuth   *auth.LocalHandler
+	rateLimiter *auth.RateLimiter
+	pool        *sshpool.Pool
+	keyStore    keystore.KeyStore
+	sessions    *session.Manager
+	terminal    *terminal.Bridge
+	staticFS    fs.FS
 }
 
 func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.KeyStore, sm *session.Manager, staticFS fs.FS) *Server {
 	s := &Server{
-		cfg:       cfg,
-		store:     st,
-		mux:       http.NewServeMux(),
-		localAuth: auth.NewLocalHandler(st, cfg.SessionSecret),
-		pool:      pool,
-		keyStore:  ks,
-		sessions:  sm,
-		terminal:  terminal.NewBridge(pool),
-		staticFS:  staticFS,
+		cfg:         cfg,
+		store:       st,
+		mux:         http.NewServeMux(),
+		localAuth:   auth.NewLocalHandler(st, cfg.SessionSecret),
+		rateLimiter: auth.NewRateLimiter(cfg.LoginRateLimit, cfg.LoginRateWindow),
+		pool:        pool,
+		keyStore:    ks,
+		sessions:    sm,
+		terminal:    terminal.NewBridge(pool),
+		staticFS:    staticFS,
 	}
 	s.routes()
 	return s
@@ -58,6 +62,10 @@ func (s *Server) ListenAndServe() error {
 	return http.ListenAndServe(s.cfg.Listen, s.mux)
 }
 
+func (s *Server) Close() {
+	s.rateLimiter.Close()
+}
+
 func (s *Server) routes() {
 	am := auth.RequireAuth(s.cfg.SessionSecret)
 	adminM := auth.RequireAdmin(s.cfg.SessionSecret)
@@ -67,8 +75,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /readyz", s.handleReadyz)
 
 	// Auth (no auth required)
-	s.mux.HandleFunc("POST /api/auth/login", s.localAuth.HandleLogin)
-	s.mux.HandleFunc("POST /api/auth/setup", s.localAuth.HandleSetup)
+	s.mux.Handle("POST /api/auth/login", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleLogin)))
+	s.mux.Handle("POST /api/auth/setup", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleSetup)))
 	s.mux.HandleFunc("GET /api/auth/setup/status", s.handleSetupStatus)
 	s.mux.HandleFunc("POST /api/auth/logout", auth.HandleLogout)
 
@@ -120,8 +128,55 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
+	checks := map[string]string{}
+	overallOK := true
+
+	// Database check
+	dbCtx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+	if err := s.store.Ping(dbCtx); err != nil {
+		checks["database"] = "error: " + err.Error()
+		overallOK = false
+	} else {
+		checks["database"] = "ok"
+	}
+
+	// Servers check (conditional)
+	if s.cfg.ReadyzRequireServer {
+		servers, err := s.store.ListServers()
+		if err != nil {
+			checks["servers"] = "error: " + err.Error()
+			overallOK = false
+		} else if len(servers) == 0 {
+			checks["servers"] = "ok" // no servers registered yet, not a fault
+		} else {
+			reachable := 0
+			for _, srv := range servers {
+				if srv.Status == store.StatusReachable {
+					reachable++
+				}
+			}
+			if reachable == 0 {
+				checks["servers"] = "no reachable servers"
+				overallOK = false
+			} else {
+				checks["servers"] = "ok"
+			}
+		}
+	} else {
+		checks["servers"] = "disabled"
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	status := "ok"
+	if !overallOK {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		status = "fail"
+	}
+	json.NewEncoder(w).Encode(map[string]any{
+		"status": status,
+		"checks": checks,
+	})
 }
 
 func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {

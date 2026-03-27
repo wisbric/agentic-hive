@@ -66,6 +66,7 @@ func main() {
 	}
 
 	srv := server.New(cfg, st, pool, ks, sm, staticFS)
+	defer srv.Close()
 
 	if cfg.AuthMode == "oidc" && cfg.OIDCIssuerURL != "" {
 		oidcHandler, err := auth.NewOIDCHandler(context.Background(), st, cfg)
