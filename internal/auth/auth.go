@@ -57,3 +57,25 @@ func GetUser(r *http.Request) *Claims {
 	c, _ := r.Context().Value(userContextKey).(*Claims)
 	return c
 }
+
+// RequireAuth returns middleware that checks for a valid JWT in the "session" cookie.
+// On success, it sets the user claims in the request context.
+func RequireAuth(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("session")
+			if err != nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+
+			claims, err := VerifyJWT(cookie.Value, secret)
+			if err != nil {
+				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, SetUser(r, claims))
+		})
+	}
+}
