@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 
@@ -25,9 +26,10 @@ type Server struct {
 	keyStore  keystore.KeyStore
 	sessions  *session.Manager
 	terminal  *terminal.Bridge
+	staticFS  fs.FS
 }
 
-func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.KeyStore, sm *session.Manager) *Server {
+func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.KeyStore, sm *session.Manager, staticFS fs.FS) *Server {
 	s := &Server{
 		cfg:       cfg,
 		store:     st,
@@ -37,6 +39,7 @@ func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.Ke
 		keyStore:  ks,
 		sessions:  sm,
 		terminal:  terminal.NewBridge(pool),
+		staticFS:  staticFS,
 	}
 	s.routes()
 	return s
@@ -85,6 +88,24 @@ func (s *Server) routes() {
 
 	// Terminal WebSocket
 	s.mux.Handle("GET /ws/terminal/{server}/{session}", am(http.HandlerFunc(s.terminal.HandleTerminal)))
+
+	// Static files
+	if s.staticFS != nil {
+		s.mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(s.staticFS))))
+		s.mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			data, err := fs.ReadFile(s.staticFS, "index.html")
+			if err != nil {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+		})
+	}
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {

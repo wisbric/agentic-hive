@@ -2,17 +2,22 @@ package main
 
 import (
 	"context"
+	"embed"
+	"io/fs"
 	"log"
 	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/auth"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/config"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/keystore"
-	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/server"
+	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
 )
+
+//go:embed all:static
+var embeddedStatic embed.FS
 
 func main() {
 	cfg := config.Load()
@@ -51,7 +56,12 @@ func main() {
 		defer sm.Stop()
 	}
 
-	srv := server.New(cfg, st, pool, ks, sm)
+	staticFS, err := fs.Sub(embeddedStatic, "static")
+	if err != nil {
+		log.Fatalf("failed to sub static fs: %v", err)
+	}
+
+	srv := server.New(cfg, st, pool, ks, sm, staticFS)
 
 	if cfg.AuthMode == "oidc" && cfg.OIDCIssuerURL != "" {
 		oidcHandler, err := auth.NewOIDCHandler(context.Background(), st, cfg)

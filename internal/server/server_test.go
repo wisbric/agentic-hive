@@ -33,7 +33,7 @@ func testServer(t *testing.T) *Server {
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
 
-	srv := New(cfg, st, pool, ks, sm)
+	srv := New(cfg, st, pool, ks, sm, nil)
 	return srv
 }
 
