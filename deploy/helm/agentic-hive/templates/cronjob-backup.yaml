@@ -1,0 +1,99 @@
+{{- if .Values.backup.enabled }}
+---
+{{- if and (eq .Values.backup.storage.type "pvc") }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "agentic-hive.fullname" . }}-backup
+  labels:
+    {{- include "agentic-hive.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.backup.storage.pvc.storageClass }}
+  storageClassName: {{ .Values.backup.storage.pvc.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backup.storage.pvc.size }}
+{{- end }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "agentic-hive.fullname" . }}-backup
+  labels:
+    {{- include "agentic-hive.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "agentic-hive.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  OUTPUT=/backup/overlay-${TIMESTAMP}.db
+                  agentic-hive backup --output "${OUTPUT}"
+                  echo "Backup complete: ${OUTPUT}"
+                  {{- if gt (int .Values.backup.retention) 0 }}
+                  # Prune old backups, keep the N most recent.
+                  ls -t /backup/*.db 2>/dev/null | tail -n +{{ add1 .Values.backup.retention }} | xargs -r rm -f
+                  echo "Pruned old backups, retention={{ .Values.backup.retention }}"
+                  {{- end }}
+              env:
+                - name: OVERLAY_DB_PATH
+                  value: /data/overlay.db
+                - name: OVERLAY_SESSION_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "agentic-hive.fullname" . }}
+                      key: SESSION_SECRET
+                {{- if eq .Values.backup.storage.type "s3" }}
+                {{- if .Values.backup.storage.s3.secretName }}
+                - name: S3_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.backup.storage.s3.secretName }}
+                      key: S3_KEY_ID
+                - name: S3_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.backup.storage.s3.secretName }}
+                      key: S3_SECRET
+                {{- end }}
+                {{- end }}
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ include "agentic-hive.fullname" . }}
+                readOnly: true
+            - name: backup
+              {{- if eq .Values.backup.storage.type "pvc" }}
+              persistentVolumeClaim:
+                claimName: {{ include "agentic-hive.fullname" . }}-backup
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+{{- end }}

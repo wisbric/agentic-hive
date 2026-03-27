@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"embed"
+	"flag"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/backup"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
@@ -37,7 +40,40 @@ func parseLogLevel(s string) slog.Level {
 	}
 }
 
+func runBackup(args []string) {
+	fs2 := flag.NewFlagSet("backup", flag.ExitOnError)
+	output := fs2.String("output", "", "destination path for the backup file (required)")
+	if err := fs2.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "backup: %v\n", err)
+		os.Exit(1)
+	}
+	if *output == "" {
+		fmt.Fprintln(os.Stderr, "backup: --output is required")
+		fs2.Usage()
+		os.Exit(1)
+	}
+
+	cfg := config.Load()
+
+	if err := backup.Run(cfg.DBPath, *output); err != nil {
+		fmt.Fprintf(os.Stderr, "backup failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	info, err := os.Stat(*output)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "backup: stat output: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("backup written to %s (%d bytes)\n", *output, info.Size())
+}
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "backup" {
+		runBackup(os.Args[2:])
+		return
+	}
+
 	metrics.Init()
 
 	cfg := config.Load()

@@ -8,10 +8,12 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/backup"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
@@ -176,6 +178,9 @@ func (s *Server) routes() {
 
 	// Templates
 	s.mux.Handle("GET /api/templates", am(http.HandlerFunc(s.handleListTemplates)))
+
+	// Admin
+	s.mux.Handle("POST /api/admin/backup", adminM(http.HandlerFunc(s.handleBackup)))
 
 	// Terminal WebSocket
 	s.mux.Handle("GET /ws/terminal/{server}/{session}", am(http.HandlerFunc(s.terminal.HandleTerminal)))
@@ -421,4 +426,46 @@ func (s *Server) handleAcceptKey(w http.ResponseWriter, r *http.Request) {
 	s.pool.Remove(id)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleBackup(w http.ResponseWriter, r *http.Request) {
+	timestamp := time.Now().UTC().Format("20060102-150405")
+	tmpFile, err := os.CreateTemp("", "overlay-backup-*.db")
+	if err != nil {
+		jsonError(w, "failed to create temp file", http.StatusInternalServerError)
+		return
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+	// Remove so VACUUM INTO can create it fresh.
+	os.Remove(tmpPath)
+	defer os.Remove(tmpPath)
+
+	if err := backup.Run(s.cfg.DBPath, tmpPath); err != nil {
+		slog.Error("backup failed", "error", err)
+		jsonError(w, "backup failed", http.StatusInternalServerError)
+		return
+	}
+
+	f, err := os.Open(tmpPath)
+	if err != nil {
+		slog.Error("failed to open backup file", "error", err)
+		jsonError(w, "failed to read backup file", http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil {
+		jsonError(w, "failed to stat backup file", http.StatusInternalServerError)
+		return
+	}
+
+	filename := fmt.Sprintf("overlay-backup-%s.db", timestamp)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", info.Size()))
+	if _, err := io.Copy(w, f); err != nil {
+		slog.Error("failed to stream backup", "error", err)
+	}
 }

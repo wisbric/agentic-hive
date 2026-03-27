@@ -78,3 +78,18 @@ metrics:
     prometheus.io/scrape: "true"
     prometheus.io/port: "8080"
     prometheus.io/path: "/metrics"
+
+backup:
+  enabled: false
+  schedule: "0 2 * * *"  # daily at 2am
+  retention: 7            # keep N most recent backup files (PVC mode only)
+  storage:
+    type: pvc             # or s3
+    pvc:
+      size: 1Gi
+      storageClass: ""
+    s3:
+      endpoint: ""
+      bucket: ""
+      prefix: "backups/"
+      secretName: ""      # k8s secret with keys S3_KEY_ID and S3_SECRET
