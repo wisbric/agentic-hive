@@ -71,7 +71,6 @@ package-helm:
   variables:
     CHART_DIR: deploy/helm/agentic-hive
   script:
-    # Set chart version from tag or commit SHA
     - |
       if [ -n "$CI_COMMIT_TAG" ]; then
         CHART_VERSION="${CI_COMMIT_TAG#v}"
@@ -80,19 +79,12 @@ package-helm:
         CHART_VERSION="0.0.0-${CI_COMMIT_SHORT_SHA}"
         APP_VERSION="${CI_COMMIT_SHORT_SHA}"
       fi
-    - echo "Chart version: ${CHART_VERSION}, App version: ${APP_VERSION}"
-    # Update Chart.yaml with versions
-    - sed -i "s/^version:.*/version: ${CHART_VERSION}/" ${CHART_DIR}/Chart.yaml
-    - sed -i "s/^appVersion:.*/appVersion: \"${APP_VERSION}\"/" ${CHART_DIR}/Chart.yaml
-    # Update default image tag in values.yaml
-    - sed -i "s/^  tag:.*/  tag: ${APP_VERSION}/" ${CHART_DIR}/values.yaml
-    # Package
-    - helm package ${CHART_DIR} --destination .
-    # Push to GitLab Helm registry
-    - >-
-      helm push
-      agentic-hive-${CHART_VERSION}.tgz
-      oci://${CI_REGISTRY_IMAGE}/helm
+      echo "Chart version ${CHART_VERSION}, App version ${APP_VERSION}"
+      sed -i "s/^version:.*/version: ${CHART_VERSION}/" ${CHART_DIR}/Chart.yaml
+      sed -i "s/^appVersion:.*/appVersion: \"${APP_VERSION}\"/" ${CHART_DIR}/Chart.yaml
+      sed -i "s/^  tag:.*/  tag: ${APP_VERSION}/" ${CHART_DIR}/values.yaml
+      helm package ${CHART_DIR} --destination .
+      helm push "agentic-hive-${CHART_VERSION}.tgz" "oci://${CI_REGISTRY_IMAGE}/helm"
   before_script:
     - helm registry login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
   rules:
