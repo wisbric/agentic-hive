@@ -1,0 +1,24 @@
+# Go
+/claude-overlay
+*.exe
+*.test
+*.out
+
+# SQLite
+*.db
+*.db-wal
+*.db-shm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+/tmp/
+/dist/
