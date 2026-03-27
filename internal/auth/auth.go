@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
 )
 
 const SessionTTL = 24 * time.Hour
@@ -100,13 +101,50 @@ func RequireAuth(secret string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session")
 			if err != nil {
-				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
 				return
 			}
 
 			claims, err := VerifyJWT(cookie.Value, secret)
 			if err != nil {
-				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+				return
+			}
+
+			next.ServeHTTP(w, SetUser(r, claims))
+		})
+	}
+}
+
+// RequireAdmin returns middleware that checks for a valid JWT in the "session" cookie
+// and that the user has the admin role. Returns 401 if no valid token, 403 if not admin.
+func RequireAdmin(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("session")
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+				return
+			}
+
+			claims, err := VerifyJWT(cookie.Value, secret)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+				return
+			}
+
+			if claims.Role != store.RoleAdmin {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]string{"error": "forbidden"})
 				return
 			}
 

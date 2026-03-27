@@ -60,6 +60,7 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) routes() {
 	am := auth.RequireAuth(s.cfg.SessionSecret)
+	adminM := auth.RequireAdmin(s.cfg.SessionSecret)
 
 	// Public
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
@@ -73,9 +74,9 @@ func (s *Server) routes() {
 
 	// Servers
 	s.mux.Handle("GET /api/servers", am(http.HandlerFunc(s.handleListServers)))
-	s.mux.Handle("POST /api/servers", am(http.HandlerFunc(s.handleCreateServer)))
-	s.mux.Handle("DELETE /api/servers/{id}", am(http.HandlerFunc(s.handleDeleteServer)))
-	s.mux.Handle("PUT /api/servers/{id}/key", am(http.HandlerFunc(s.handleUploadKey)))
+	s.mux.Handle("POST /api/servers", adminM(http.HandlerFunc(s.handleCreateServer)))
+	s.mux.Handle("DELETE /api/servers/{id}", adminM(http.HandlerFunc(s.handleDeleteServer)))
+	s.mux.Handle("PUT /api/servers/{id}/key", adminM(http.HandlerFunc(s.handleUploadKey)))
 
 	// Sessions
 	s.mux.Handle("GET /api/servers/{id}/sessions", am(http.HandlerFunc(s.handleListSessions)))
