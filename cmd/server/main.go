@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/auth"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/config"
+	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/keystore"
+	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/session"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/server"
+	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/sshpool"
 	"gitlab.com/adfinisde/agentic-workspace/claude-overlay/internal/store"
 )
 
@@ -23,7 +27,31 @@ func main() {
 		log.Fatalf("failed to seed templates: %v", err)
 	}
 
-	srv := server.New(cfg, st)
+	// Initialize KeyStore
+	var ks keystore.KeyStore
+	switch cfg.KeyStoreBackend {
+	case "vault":
+		ks, err = keystore.NewVault(cfg.VaultAddr, cfg.VaultToken, cfg.VaultSecretPath)
+		if err != nil {
+			log.Fatalf("failed to initialize vault keystore: %v", err)
+		}
+		log.Printf("using vault keystore (%s)", cfg.VaultAddr)
+	default:
+		ks = keystore.NewLocal(st.DB(), cfg.SessionSecret)
+		log.Printf("using local keystore")
+	}
+
+	// Initialize SSH Pool and Session Manager
+	pool := sshpool.New(st, ks)
+	defer pool.Close()
+
+	sm := session.NewManager(st, pool)
+	if cfg.PollInterval > 0 {
+		sm.StartPolling(context.Background(), time.Duration(cfg.PollInterval)*time.Second)
+		defer sm.Stop()
+	}
+
+	srv := server.New(cfg, st, pool, ks, sm)
 
 	if cfg.AuthMode == "oidc" && cfg.OIDCIssuerURL != "" {
 		oidcHandler, err := auth.NewOIDCHandler(context.Background(), st, cfg)
