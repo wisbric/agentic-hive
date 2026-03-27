@@ -6,7 +6,9 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
@@ -45,12 +47,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
 		os.Exit(1)
 	}
-	defer st.Close()
 
 	if err := st.SeedTemplates(); err != nil {
 		slog.Error("failed to seed templates", "error", err)
@@ -79,12 +83,10 @@ func main() {
 
 	// Initialize SSH Pool and Session Manager
 	pool := sshpool.New(st, ks)
-	defer pool.Close()
 
 	sm := session.NewManager(st, pool)
 	if cfg.PollInterval > 0 {
-		sm.StartPolling(context.Background(), time.Duration(cfg.PollInterval)*time.Second)
-		defer sm.Stop()
+		sm.StartPolling(ctx, time.Duration(cfg.PollInterval)*time.Second)
 	}
 
 	staticFS, err := fs.Sub(embeddedStatic, "static")
@@ -94,7 +96,6 @@ func main() {
 	}
 
 	srv := server.New(cfg, st, pool, ks, sm, staticFS)
-	defer srv.Close()
 
 	if cfg.AuthMode == "oidc" && cfg.OIDCIssuerURL != "" {
 		oidcHandler, err := auth.NewOIDCHandler(context.Background(), st, cfg)
@@ -108,8 +109,15 @@ func main() {
 
 	slog.Info("server starting", "auth", cfg.AuthMode, "keystore", cfg.KeyStoreBackend)
 
-	if err := srv.ListenAndServe(); err != nil {
-		slog.Error("server stopped", "error", err)
+	if err := srv.ListenAndServe(ctx); err != nil {
+		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}
+
+	// Shutdown sequence: deterministic ordering and logging
+	sm.Stop()
+	pool.Close()
+	st.Close()
+	srv.Close()
+	slog.Info("shutdown complete")
 }

@@ -16,6 +16,7 @@ spec:
       labels:
         {{- include "agentic-hive.selectorLabels" . | nindent 8 }}
     spec:
+      terminationGracePeriodSeconds: 35
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

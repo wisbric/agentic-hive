@@ -22,6 +22,7 @@ type Server struct {
 	cfg         *config.Config
 	store       *store.Store
 	mux         *http.ServeMux
+	httpServer  *http.Server
 	localAuth   *auth.LocalHandler
 	rateLimiter *auth.RateLimiter
 	pool        *sshpool.Pool
@@ -45,6 +46,10 @@ func New(cfg *config.Config, st *store.Store, pool *sshpool.Pool, ks keystore.Ke
 		staticFS:    staticFS,
 	}
 	s.routes()
+	s.httpServer = &http.Server{
+		Addr:    cfg.Listen,
+		Handler: s.Handler(),
+	}
 	return s
 }
 
@@ -87,9 +92,28 @@ func (s *Server) Handler() http.Handler {
 	)(s.mux))
 }
 
-func (s *Server) ListenAndServe() error {
+func (s *Server) ListenAndServe(ctx context.Context) error {
 	slog.Info("listening", "addr", s.cfg.Listen)
-	return http.ListenAndServe(s.cfg.Listen, s.Handler())
+	errCh := make(chan error, 1)
+	go func() {
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		slog.Info("shutdown signal received, draining...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("http shutdown error", "error", err)
+		}
+		slog.Info("http server stopped")
+		return nil
+	}
 }
 
 func (s *Server) Close() {
