@@ -94,10 +94,17 @@
     const sshUser = document.getElementById('server-user').value;
     const key = document.getElementById('server-key').value;
 
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Adding server...';
+
     try {
       const res = await api('POST', '/api/servers', { name, host, port, sshUser });
       if (!res.ok) throw new Error('Failed to create server');
       const srv = await res.json();
+
+      btn.textContent = 'Uploading key...';
 
       // Upload key
       await fetch('/api/servers/' + srv.ID + '/key', {
@@ -107,10 +114,21 @@
         body: key,
       });
 
+      btn.textContent = 'Added!';
+      btn.classList.add('btn-success');
       document.getElementById('add-server-form').reset();
-      document.getElementById('add-server-section').style.display = 'none';
-      loadServers();
-    } catch (e) { alert('Error: ' + e.message); }
+      await loadServers();
+      setTimeout(() => {
+        document.getElementById('add-server-section').style.display = 'none';
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove('btn-success');
+      }, 1500);
+    } catch (e) {
+      btn.textContent = 'Failed: ' + e.message;
+      btn.classList.add('btn-error');
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('btn-error'); }, 3000);
+    }
   });
 
   // --- Dashboard ---
@@ -259,27 +277,53 @@
     const label = document.getElementById('label-' + serverID).value || 'session';
     const workdir = document.getElementById('workdir-' + serverID).value || '~/';
     const command = opt.dataset.cmd || 'bash';
+    // Find the button and show loading
+    const btn = event.target;
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
     try {
       await api('POST', '/api/servers/' + serverID + '/sessions', {
         label: label,
         command: command,
         workdir: workdir
       });
+      btn.textContent = 'Created!';
+      btn.classList.add('btn-success');
       await loadSessions(serverID);
-    } catch (e) { alert('Failed to create session'); }
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('btn-success'); }, 1500);
+    } catch (e) {
+      btn.textContent = 'Failed';
+      btn.classList.add('btn-error');
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('btn-error'); }, 2000);
+    }
   };
 
   window.killSession = async function(serverID, name) {
     if (!confirm('Kill session ' + name + '?')) return;
+    // Find the clicked button
+    const btn = event.target;
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Killing...';
     try {
       await api('DELETE', '/api/servers/' + serverID + '/sessions/' + name);
+      btn.textContent = 'Done';
       await loadSessions(serverID);
-    } catch (e) { alert('Failed to kill session'); }
+    } catch (e) {
+      btn.textContent = 'Failed';
+      btn.classList.add('btn-error');
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('btn-error'); }, 2000);
+    }
   };
 
   window.copySSH = function(cmd) {
+    const btn = event.target;
     navigator.clipboard.writeText(cmd).then(() => {
-      // Brief visual feedback would be nice but keeping it simple
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('btn-success');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('btn-success'); }, 1500);
     });
   };
 

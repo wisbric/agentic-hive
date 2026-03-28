@@ -109,6 +109,14 @@ button:hover, .btn:hover { background: var(--accent-hover); }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { background: #b91c1c; }
 
+.btn-success { background: var(--accent) !important; color: var(--bg) !important; }
+.btn-error { background: var(--danger) !important; color: #fff !important; }
+
+button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .error { color: var(--danger); margin-top: 8px; font-size: 14px; }
 
 .divider {
