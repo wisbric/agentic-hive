@@ -12,6 +12,11 @@ func okHandler() http.Handler {
 	})
 }
 
+// sessionCookie creates a fake session cookie (CSRF only checks for its existence)
+func sessionCookie() *http.Cookie {
+	return &http.Cookie{Name: "session", Value: "fake-jwt-token"}
+}
+
 func TestSetCSRFCookie(t *testing.T) {
 	w := httptest.NewRecorder()
 	token, err := SetCSRFCookie(w)
@@ -19,7 +24,6 @@ func TestSetCSRFCookie(t *testing.T) {
 		t.Fatalf("SetCSRFCookie returned error: %v", err)
 	}
 
-	// Token should be 64 hex chars (32 bytes)
 	if len(token) != 64 {
 		t.Errorf("token length = %d, want 64", len(token))
 	}
@@ -58,18 +62,33 @@ func TestCSRFProtectGetPassThrough(t *testing.T) {
 	}
 }
 
+func TestCSRFProtectNoSessionSkips(t *testing.T) {
+	mw := CSRFProtect()
+	handler := mw(okHandler())
+
+	// POST without session cookie — CSRF skips, next handler runs
+	req := httptest.NewRequest(http.MethodPost, "/api/servers", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("POST without session cookie should skip CSRF: status = %d, want 200", w.Code)
+	}
+}
+
 func TestCSRFProtectMissingToken(t *testing.T) {
 	mw := CSRFProtect()
 	handler := mw(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/servers", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: "abc123"})
 	// No X-CSRF-Token header
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusForbidden {
-		t.Errorf("POST without header: status = %d, want 403", w.Code)
+		t.Errorf("POST with session but no CSRF header: status = %d, want 403", w.Code)
 	}
 }
 
@@ -78,6 +97,7 @@ func TestCSRFProtectWrongToken(t *testing.T) {
 	handler := mw(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/servers", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: "cookie-value"})
 	req.Header.Set("X-CSRF-Token", "different-value")
 	w := httptest.NewRecorder()
@@ -94,6 +114,7 @@ func TestCSRFProtectCorrectToken(t *testing.T) {
 
 	token := "matching-csrf-token-value"
 	req := httptest.NewRequest(http.MethodPost, "/api/servers", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: token})
 	req.Header.Set("X-CSRF-Token", token)
 	w := httptest.NewRecorder()
@@ -108,7 +129,6 @@ func TestCSRFProtectExemptPath(t *testing.T) {
 	mw := CSRFProtect("/api/auth/login", "/api/auth/setup", "/api/auth/oidc/callback", "/healthz", "/readyz")
 	handler := mw(okHandler())
 
-	// POST to /api/auth/login without any CSRF token should pass
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -131,19 +151,32 @@ func TestCSRFProtectExemptSetup(t *testing.T) {
 	}
 }
 
-func TestCSRFProtectWebSocket(t *testing.T) {
+func TestCSRFProtectWebSocketNoSession(t *testing.T) {
 	mw := CSRFProtect()
 	handler := mw(okHandler())
 
-	// GET /ws/terminal/... without csrf query param → 403
+	// WebSocket without session cookie — skips CSRF
+	req := httptest.NewRequest(http.MethodGet, "/ws/terminal/server1/session1", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("WebSocket without session should skip CSRF: status = %d, want 200", w.Code)
+	}
+}
+
+func TestCSRFProtectWebSocketMissingParam(t *testing.T) {
+	mw := CSRFProtect()
+	handler := mw(okHandler())
+
 	req := httptest.NewRequest(http.MethodGet, "/ws/terminal/server1/session1?cols=80&rows=24", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: "some-token"})
-	// no ?csrf= param
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusForbidden {
-		t.Errorf("WebSocket without csrf param: status = %d, want 403", w.Code)
+		t.Errorf("WebSocket with session but no csrf param: status = %d, want 403", w.Code)
 	}
 }
 
@@ -153,6 +186,7 @@ func TestCSRFProtectWebSocketCorrectParam(t *testing.T) {
 
 	token := "ws-csrf-token-value"
 	req := httptest.NewRequest(http.MethodGet, "/ws/terminal/server1/session1?cols=80&rows=24&csrf="+token, nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: token})
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -167,6 +201,7 @@ func TestCSRFProtectWebSocketWrongParam(t *testing.T) {
 	handler := mw(okHandler())
 
 	req := httptest.NewRequest(http.MethodGet, "/ws/terminal/server1/session1?cols=80&rows=24&csrf=wrong-token", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: "correct-token"})
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
@@ -182,6 +217,7 @@ func TestCSRFProtectDeleteMethod(t *testing.T) {
 
 	token := "delete-csrf-token"
 	req := httptest.NewRequest(http.MethodDelete, "/api/servers/some-id", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: token})
 	req.Header.Set("X-CSRF-Token", token)
 	w := httptest.NewRecorder()
@@ -196,8 +232,8 @@ func TestCSRFProtectPutMethod(t *testing.T) {
 	mw := CSRFProtect()
 	handler := mw(okHandler())
 
-	// PUT without token → 403
 	req := httptest.NewRequest(http.MethodPut, "/api/servers/some-id/key", nil)
+	req.AddCookie(sessionCookie())
 	req.AddCookie(&http.Cookie{Name: "csrf", Value: "token"})
 	// no header
 	w := httptest.NewRecorder()
@@ -212,14 +248,15 @@ func TestCSRFProtectMissingCookie(t *testing.T) {
 	mw := CSRFProtect()
 	handler := mw(okHandler())
 
-	// POST with header but no cookie → 403
+	// POST with session + header but no csrf cookie → 403
 	req := httptest.NewRequest(http.MethodPost, "/api/servers", nil)
+	req.AddCookie(sessionCookie())
 	req.Header.Set("X-CSRF-Token", "some-token")
 	// no csrf cookie
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusForbidden {
-		t.Errorf("POST with header but no cookie: status = %d, want 403", w.Code)
+		t.Errorf("POST with header but no csrf cookie: status = %d, want 403", w.Code)
 	}
 }

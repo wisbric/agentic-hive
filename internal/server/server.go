@@ -126,14 +126,26 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; connect-src 'self' wss:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) Handler() http.Handler {
-	return loggingMiddleware(auth.CSRFProtect(
+	return loggingMiddleware(securityHeaders(auth.CSRFProtect(
 		"/api/auth/login",
 		"/api/auth/setup",
 		"/api/auth/oidc/callback",
+		"/api/auth/oidc/login",
 		"/healthz",
 		"/readyz",
-	)(s.mux))
+		"/metrics",
+	)(s.mux)))
 }
 
 func (s *Server) ListenAndServe(ctx context.Context) error {

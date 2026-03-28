@@ -34,9 +34,6 @@
     const view = document.getElementById(name + '-view');
     if (view) view.style.display = '';
     if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
-    if (name === 'dashboard') {
-      refreshTimer = setInterval(loadServers, 30000);
-    }
   }
 
   // --- Setup ---
@@ -330,6 +327,17 @@
 
   window.openTerminal = function(serverID, sessionName) {
     window.open('/static/terminal.html?server=' + serverID + '&session=' + sessionName, '_blank');
+  };
+
+  window.refreshDashboard = async function() {
+    const btn = document.getElementById('refresh-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '↻ Refreshing...'; }
+    await loadServers();
+    // Also live-refresh sessions for any expanded servers
+    for (const id of expandedServers) {
+      await loadSessions(id, true);
+    }
+    if (btn) { btn.textContent = '↻ Done!'; setTimeout(() => { btn.textContent = '↻ Refresh'; btn.disabled = false; }, 1000); }
   };
 
   window.deleteServer = async function(id) {

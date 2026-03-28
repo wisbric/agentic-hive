@@ -83,6 +83,11 @@ func CSRFProtect(exempt ...string) func(http.Handler) http.Handler {
 
 			// WebSocket paths: validate csrf query param regardless of method
 			if strings.HasPrefix(r.URL.Path, "/ws/") {
+				// Skip CSRF if no session — auth middleware will reject with 401
+				if _, err := r.Cookie("session"); err != nil {
+					next.ServeHTTP(w, r)
+					return
+				}
 				cookie := ReadCSRFCookie(r)
 				param := r.URL.Query().Get("csrf")
 				if cookie == "" || param == "" || subtle.ConstantTimeCompare([]byte(param), []byte(cookie)) != 1 {
@@ -98,6 +103,12 @@ func CSRFProtect(exempt ...string) func(http.Handler) http.Handler {
 			// Safe methods pass through
 			switch r.Method {
 			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// If no session cookie, skip CSRF — auth middleware will reject with 401
+			if _, err := r.Cookie("session"); err != nil {
 				next.ServeHTTP(w, r)
 				return
 			}
