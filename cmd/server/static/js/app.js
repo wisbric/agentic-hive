@@ -516,7 +516,11 @@
   window.testOIDC = async function() {
     showStatus('oidc-status', 'Testing OIDC connection...', false);
     try {
-      const res = await api('POST', '/api/admin/settings/test-oidc');
+      const body = {
+        issuer_url: document.getElementById('oidc-issuer-url').value,
+        client_id: document.getElementById('oidc-client-id').value,
+      };
+      const res = await api('POST', '/api/admin/settings/test-oidc', body);
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         showStatus('oidc-status', data.message || 'OIDC connection OK.', false);
@@ -531,7 +535,11 @@
   window.testVault = async function() {
     showStatus('vault-status', 'Testing Vault connection...', false);
     try {
-      const res = await api('POST', '/api/admin/settings/test-vault');
+      const body = {
+        address: document.getElementById('vault-address').value,
+        token: document.getElementById('vault-token').value,
+      };
+      const res = await api('POST', '/api/admin/settings/test-vault', body);
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         showStatus('vault-status', data.message || 'Vault connection OK.', false);

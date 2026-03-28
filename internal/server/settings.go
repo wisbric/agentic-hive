@@ -121,10 +121,8 @@ type testOIDCRequest struct {
 // handleTestOIDC verifies OIDC discovery without saving anything.
 func (s *Server) handleTestOIDC(w http.ResponseWriter, r *http.Request) {
 	var req testOIDCRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
+	// Allow empty body — will fall back to saved/current config
+	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	// Fall back to current config when fields are not supplied.
 	issuerURL := req.IssuerURL
@@ -179,10 +177,8 @@ type testVaultRequest struct {
 // handleTestVault verifies Vault connectivity without saving anything.
 func (s *Server) handleTestVault(w http.ResponseWriter, r *http.Request) {
 	var req testVaultRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		jsonError(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
+	// Allow empty body — will fall back to saved/current config
+	_ = json.NewDecoder(r.Body).Decode(&req)
 
 	// Fall back to current config when fields are not supplied.
 	address := req.Address
