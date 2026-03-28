@@ -25,6 +25,12 @@ import (
 	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/terminal"
 )
 
+var (
+	Version   = "dev"
+	Commit    = "unknown"
+	startTime = time.Now()
+)
+
 type Server struct {
 	cfg         *config.Config
 	store       *store.Store
@@ -186,6 +192,7 @@ func (s *Server) routes() {
 	// Public
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 	s.mux.HandleFunc("GET /readyz", s.handleReadyz)
+	s.mux.HandleFunc("GET /api/about", s.handleAbout)
 
 	// Auth (no auth required)
 	s.mux.Handle("POST /api/auth/login", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleLogin)))
@@ -245,6 +252,16 @@ func (s *Server) routes() {
 			w.Write(data)
 		})
 	}
+}
+
+func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
+	uptime := time.Since(startTime).Round(time.Second).String()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"version": Version,
+		"commit":  Commit,
+		"uptime":  uptime,
+	})
 }
 
 func jsonError(w http.ResponseWriter, msg string, code int) {

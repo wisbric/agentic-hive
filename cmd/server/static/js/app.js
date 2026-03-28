@@ -71,11 +71,7 @@
   });
 
   // --- Logout ---
-  document.getElementById('logout-btn').addEventListener('click', async () => {
-    await api('POST', '/api/auth/logout');
-    currentUser = null;
-    showView('login');
-  });
+  window.doLogout = async function() { await api('POST', '/api/auth/logout'); currentUser = null; showView('login'); };
 
   // --- Add Server ---
   document.getElementById('show-add-server').addEventListener('click', () => {
@@ -593,6 +589,56 @@
     d.textContent = s;
     return d.innerHTML;
   }
+
+  // --- User menu ---
+  window.toggleUserMenu = function() {
+    document.getElementById('user-menu-dropdown').classList.toggle('open');
+  };
+  document.addEventListener('click', function(e) {
+    const menu = document.getElementById('user-menu-dropdown');
+    const trigger = document.getElementById('user-menu-trigger');
+    if (menu && !menu.contains(e.target) && !trigger.contains(e.target)) {
+      menu.classList.remove('open');
+    }
+  });
+
+  // --- Theme toggle ---
+  window.toggleTheme = function() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('agentic-hive-theme', next);
+    updateThemeUI(next);
+  };
+  function updateThemeUI(theme) {
+    document.getElementById('theme-icon').textContent = theme === 'dark' ? '\u263E' : '\u2600';
+    document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  }
+  (function() {
+    const saved = localStorage.getItem('agentic-hive-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    // Update UI after DOM is ready (elements may not exist yet at this point; safe to call, will be no-op if elements missing)
+    document.addEventListener('DOMContentLoaded', function() { updateThemeUI(saved); }, { once: true });
+    // Also try immediately in case DOMContentLoaded already fired
+    if (document.readyState !== 'loading') { updateThemeUI(saved); }
+  })();
+
+  // --- About modal ---
+  window.showAbout = async function() {
+    document.getElementById('about-modal').style.display = '';
+    document.getElementById('user-menu-dropdown').classList.remove('open');
+    try {
+      const res = await fetch('/api/about');
+      if (res.ok) {
+        const info = await res.json();
+        document.getElementById('about-version').textContent = info.version || 'dev';
+        document.getElementById('about-commit').textContent = info.commit || 'unknown';
+        document.getElementById('about-uptime').textContent = info.uptime || '-';
+      }
+    } catch(e) {}
+  };
+  window.closeAbout = function() { document.getElementById('about-modal').style.display = 'none'; };
 
   // --- Init ---
   async function init() {

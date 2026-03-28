@@ -53,9 +53,20 @@
           <h1>Agentic Hive</h1>
         </div>
         <div class="header-right">
-          <button id="refresh-btn" class="btn-small" onclick="refreshDashboard()" title="Refresh servers and sessions">&#8635; Refresh</button>
-          <span id="current-user"></span>
-          <button id="logout-btn" class="btn-small">Logout</button>
+          <button id="refresh-btn" class="btn-small" onclick="refreshDashboard()" title="Refresh">&#8635; Refresh</button>
+          <div class="user-menu">
+            <button class="user-menu-trigger" id="user-menu-trigger" onclick="toggleUserMenu()">
+              <span id="current-user"></span> &#9662;
+            </button>
+            <div class="user-menu-dropdown" id="user-menu-dropdown">
+              <button onclick="toggleTheme()">
+                <span id="theme-icon">&#9790;</span> <span id="theme-label">Light mode</span>
+              </button>
+              <button onclick="showAbout()">About</button>
+              <hr>
+              <button onclick="doLogout()">Logout</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -160,6 +171,22 @@
 
         </div>
       </main>
+    <div id="about-modal" class="modal" style="display:none">
+      <div class="modal-backdrop" onclick="closeAbout()"></div>
+      <div class="card modal-content">
+        <div class="about-header">
+          <img src="/static/img/owl-logo.png" alt="Agentic Hive" height="48">
+          <h2>Agentic Hive</h2>
+        </div>
+        <p class="about-desc">Terminal session management hub for AI coding agents. Manage Claude Code, Codex, and shell sessions across remote hosts from a single dashboard.</p>
+        <div class="about-info">
+          <div class="about-row"><span class="about-label">Version</span><span id="about-version">dev</span></div>
+          <div class="about-row"><span class="about-label">Commit</span><span id="about-commit">unknown</span></div>
+          <div class="about-row"><span class="about-label">Uptime</span><span id="about-uptime">-</span></div>
+        </div>
+        <p class="about-footer">A <strong>Wisbric</strong> product</p>
+        <button onclick="closeAbout()" class="btn" style="width:100%;margin-top:16px">Close</button>
+      </div>
     </div>
   </div>
 
