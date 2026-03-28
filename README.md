@@ -13,7 +13,8 @@ A lightweight web application for managing tmux sessions across multiple remote 
 - **Session templates** — Claude Code, Claude Code (full access), Codex, Shell, or custom commands
 - **Local + SSO auth** — built-in username/password with optional OIDC (Keycloak, Authentik, etc.)
 - **Encrypted SSH key storage** — AES-256-GCM with Argon2id (local) or HashiCorp Vault / OpenBao
-- **Admin UI** — user management, OIDC/Vault configuration, poll interval — all hot-reloadable without restart
+- **Admin UI** — user management, OIDC/Vault configuration — all hot-reloadable without restart
+- **Dark/light theme** — gradient-futuristic NightOwl design with glassmorphism, theme toggle persisted per user
 - **Production-ready** — structured logging, Prometheus metrics, graceful shutdown, audit log, CSRF protection, rate limiting, SSH host key verification (TOFU)
 
 ## Quick Start
@@ -167,6 +168,9 @@ See [`deploy/helm/agentic-hive/values.yaml`](deploy/helm/agentic-hive/values.yam
 | `POST` | `/api/admin/settings/test-vault` | admin | Test Vault connection |
 | `GET` | `/api/admin/audit` | admin | Audit log |
 | `POST` | `/api/admin/backup` | admin | Download DB backup |
+| `GET` | `/api/admin/config` | admin | Current config summary |
+| `GET` | `/api/me` | user | Current user info |
+| `GET` | `/api/about` | - | Version, commit, uptime |
 
 ## Security
 
