@@ -441,8 +441,6 @@
       setSecretFieldFromSetting('vault-token', 'lbl-vault-token',       s['vault.token']);
       setFieldFromSetting('vault-secret-path', 'lbl-vault-secret-path', s['vault.secret_path']);
 
-      // General fields
-      setFieldFromSetting('general-poll-interval', 'lbl-general-poll-interval', s['general.poll_interval']);
     } catch (e) {
       // Settings endpoint may not exist yet — fail silently
     }
@@ -476,11 +474,6 @@
   document.getElementById('vault-settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     await saveVaultSettings();
-  });
-
-  document.getElementById('general-settings-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await saveGeneralSettings();
   });
 
   async function saveOIDCSettings() {
@@ -521,23 +514,6 @@
       }
     } catch (e) {
       showStatus('vault-status', 'Save failed: ' + e.message, true);
-    }
-  }
-
-  async function saveGeneralSettings() {
-    const values = collectFormValues([
-      { key: 'general.poll_interval', inputId: 'general-poll-interval' },
-    ]);
-    try {
-      const res = await api('PUT', '/api/admin/settings', values);
-      if (res.ok) {
-        showStatus('general-status', 'General settings saved.', false);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showStatus('general-status', 'Save failed: ' + (data.error || res.status), true);
-      }
-    } catch (e) {
-      showStatus('general-status', 'Save failed: ' + e.message, true);
     }
   }
 
