@@ -1,8 +1,8 @@
-# Claude Overlay — Architecture
+# Agentic Hive — Architecture
 
 ## Overview
 
-Claude Overlay is a lightweight web application that acts as a central hub for managing tmux sessions across multiple remote hosts ("tmux servers"). It provides two access modes:
+Agentic Hive is a lightweight web application that acts as a central hub for managing tmux sessions across multiple remote hosts ("tmux servers"). It provides two access modes:
 
 1. **SSH command** — one-click copy of an `ssh` command the user runs in their local terminal
 2. **Browser terminal** — in-app xterm.js console for immediate access without leaving the browser
@@ -15,7 +15,7 @@ The app runs as a single container, manages SSH connectivity to registered hosts
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Claude Overlay                         │
+│                    Agentic Hive                         │
 │                   (Go + xterm.js)                         │
 │                                                           │
 │  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐ │
@@ -75,10 +75,10 @@ A tmux session on a tmux server. Sessions can be:
 **Decision:** SSH private keys are stored via a pluggable `KeyStore` interface. Two backends ship out of the box:
 
 1. **Local (default)** — keys encrypted at rest in the SQLite database using AES-256-GCM. The encryption key is derived from the app's `SESSION_SECRET` via Argon2id. Zero external dependencies.
-2. **Vault (optional)** — keys stored in HashiCorp Vault / OpenBao (`secret/claude-overlay/ssh-keys/<server-name>`). Rotation and audit come for free.
+2. **Vault (optional)** — keys stored in HashiCorp Vault / OpenBao (`secret/agentic-hive/ssh-keys/<server-name>`). Rotation and audit come for free.
 
 **Why pluggable:**
-- Not everyone runs a Vault instance — the local backend makes Claude Overlay usable standalone
+- Not everyone runs a Vault instance — the local backend makes Agentic Hive usable standalone
 - Users who already have Vault/OpenBao get first-class integration without compromises
 - The `KeyStore` interface is small (Get/Put/Delete), so adding future backends (AWS KMS, SOPS, etc.) is trivial
 
@@ -270,22 +270,22 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=1 go build -o /claude-overlay ./cmd/server
+RUN CGO_ENABLED=1 go build -o /agentic-hive ./cmd/server
 
 FROM alpine:3.21
 RUN apk add --no-cache openssh-client ca-certificates
-COPY --from=build /claude-overlay /usr/local/bin/
+COPY --from=build /agentic-hive /usr/local/bin/
 COPY static/ /app/static/
 EXPOSE 8080
-ENTRYPOINT ["claude-overlay"]
+ENTRYPOINT ["agentic-hive"]
 ```
 
 ### Helm Chart
 
-Deployed via Helm. Chart lives in `deploy/helm/claude-overlay/`.
+Deployed via Helm. Chart lives in `deploy/helm/agentic-hive/`.
 
 ```
-deploy/helm/claude-overlay/
+deploy/helm/agentic-hive/
 ├── Chart.yaml
 ├── values.yaml
 ├── templates/
@@ -304,7 +304,7 @@ deploy/helm/claude-overlay/
 replicaCount: 1
 
 image:
-  repository: registry.wisbric.com/claude-overlay
+  repository: registry.wisbric.com/agentic-hive
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -342,7 +342,7 @@ keyStore:
     approle:
       roleId: ""
       secretId: ""
-    secretPath: "secret/claude-overlay/ssh-keys"
+    secretPath: "secret/agentic-hive/ssh-keys"
 
 # --- App Config ---
 config:
@@ -389,17 +389,17 @@ resources:
 ### Minimal quickstart (local auth, local key store)
 
 ```bash
-helm install claude-overlay deploy/helm/claude-overlay/ \
+helm install agentic-hive deploy/helm/agentic-hive/ \
   --set config.sessionSecret=$(openssl rand -hex 32)
 ```
 
 ### With OIDC + Vault
 
 ```bash
-helm install claude-overlay deploy/helm/claude-overlay/ \
+helm install agentic-hive deploy/helm/agentic-hive/ \
   --set auth.mode=oidc \
   --set auth.oidc.issuerUrl=https://auth.wisbric.com/realms/overlay \
-  --set auth.oidc.clientId=claude-overlay \
+  --set auth.oidc.clientId=agentic-hive \
   --set auth.oidc.clientSecret=<secret> \
   --set keyStore.backend=vault \
   --set keyStore.vault.address=https://vault.wisbric.com \
