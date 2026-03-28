@@ -100,7 +100,7 @@ func TestResolveSettingsDefaults(t *testing.T) {
 	}
 
 	// Vault defaults
-	if sv := resolved.Vault["secret_path"]; sv.Source != SourceDefault || sv.Value != "secret/agentic-hive/ssh-keys" {
+	if sv := resolved.Vault["secret_path"]; sv.Source != SourceDefault || sv.Value != "agentic-hive/ssh-keys" {
 		t.Errorf("Vault secret_path: source=%q value=%q", sv.Source, sv.Value)
 	}
 
