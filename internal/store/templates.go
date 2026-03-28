@@ -4,7 +4,9 @@ import "fmt"
 
 var defaultTemplates = []SessionTemplate{
 	{Name: "Claude Code", Command: "claude", Workdir: "~/"},
+	{Name: "Claude Code (full access)", Command: "claude --dangerously-skip-permissions", Workdir: "~/"},
 	{Name: "Claude Code (resume)", Command: "claude --resume", Workdir: "~/"},
+	{Name: "Codex", Command: "codex", Workdir: "~/"},
 	{Name: "Shell", Command: "bash", Workdir: "~/"},
 }
 

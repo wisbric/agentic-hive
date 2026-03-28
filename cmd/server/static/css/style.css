@@ -239,7 +239,13 @@ main { padding: 24px; max-width: 960px; margin: 0 auto; }
   margin: 0;
   width: auto;
   flex: 1;
-  min-width: 120px;
+  min-width: 100px;
+}
+.new-session-form .workdir-input {
+  min-width: 80px;
+  flex: 0.7;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
 }
 .new-session-form button { margin: 0; }
 

@@ -3,6 +3,7 @@
 
   let currentUser = null;
   let servers = [];
+  let templates = [];
   let refreshTimer = null;
   const expandedServers = new Set();
 
@@ -113,9 +114,23 @@
   });
 
   // --- Dashboard ---
+  async function loadTemplates() {
+    try {
+      const res = await api('GET', '/api/templates');
+      if (res.ok) templates = await res.json();
+    } catch (e) { /* fallback to empty */ }
+    if (!templates || templates.length === 0) {
+      templates = [
+        {ID: 'claude', Name: 'Claude Code', Command: 'claude', Workdir: '~/'},
+        {ID: 'shell', Name: 'Shell', Command: 'bash', Workdir: '~/'},
+      ];
+    }
+  }
+
   async function showDashboard() {
     showView('dashboard');
     document.getElementById('current-user').textContent = currentUser || '';
+    await loadTemplates();
     await loadServers();
     // Show admin section if user has admin role
     loadAdminSection();
@@ -149,12 +164,11 @@
         <div class="server-body" id="body-${srv.ID}">
           <div id="sessions-${srv.ID}">Loading sessions...</div>
           <div class="new-session-form">
-            <select id="template-${srv.ID}">
-              <option value="claude">Claude Code</option>
-              <option value="claude-resume">Claude Code (resume)</option>
-              <option value="shell">Shell</option>
+            <select id="template-${srv.ID}" onchange="onTemplateChange('${srv.ID}')">
+              ${templates.map(t => `<option value="${esc(t.ID)}" data-cmd="${esc(t.Command)}" data-workdir="${esc(t.Workdir)}">${esc(t.Name)}</option>`).join('')}
             </select>
             <input type="text" id="label-${srv.ID}" placeholder="Session label" value="claude">
+            <input type="text" id="workdir-${srv.ID}" placeholder="Working dir" value="~/" class="workdir-input">
             <button onclick="createSession('${srv.ID}')">New Session</button>
           </div>
           <button class="btn-small btn-danger" style="margin-top:12px" onclick="deleteServer('${srv.ID}')">Remove Server</button>
@@ -226,15 +240,30 @@
     }
   }
 
+  window.onTemplateChange = function(serverID) {
+    const sel = document.getElementById('template-' + serverID);
+    const opt = sel.options[sel.selectedIndex];
+    const workdirInput = document.getElementById('workdir-' + serverID);
+    if (workdirInput && opt.dataset.workdir) {
+      workdirInput.value = opt.dataset.workdir;
+    }
+    // Update label to match template name
+    const labelInput = document.getElementById('label-' + serverID);
+    const name = opt.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
+    if (labelInput) labelInput.value = name;
+  };
+
   window.createSession = async function(serverID) {
-    const template = document.getElementById('template-' + serverID).value;
+    const sel = document.getElementById('template-' + serverID);
+    const opt = sel.options[sel.selectedIndex];
     const label = document.getElementById('label-' + serverID).value || 'session';
-    const commands = { 'claude': 'claude', 'claude-resume': 'claude --resume', 'shell': 'bash' };
+    const workdir = document.getElementById('workdir-' + serverID).value || '~/';
+    const command = opt.dataset.cmd || 'bash';
     try {
       await api('POST', '/api/servers/' + serverID + '/sessions', {
         label: label,
-        command: commands[template] || 'bash',
-        workdir: '~/'
+        command: command,
+        workdir: workdir
       });
       await loadSessions(serverID);
     } catch (e) { alert('Failed to create session'); }
