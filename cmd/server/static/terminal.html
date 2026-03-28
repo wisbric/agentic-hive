@@ -7,45 +7,51 @@
   <link rel="stylesheet" href="/static/js/vendor/xterm.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0A0F0D; overflow: hidden; }
+    body { background: #060B09; overflow: hidden; }
     #top-bar {
-      height: 30px;
-      background: #111916;
-      color: #8B9A91;
+      height: 32px;
+      background: rgba(14,24,19,0.9);
+      backdrop-filter: blur(12px);
+      color: #7A9489;
       display: flex;
       align-items: center;
-      padding: 0 14px;
+      padding: 0 16px;
       font: 12px/1 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-      border-bottom: 1px solid #1E2E27;
+      border-bottom: 1px solid rgba(0,229,160,0.08);
       gap: 10px;
     }
-    #top-bar .owl-icon { display: flex; align-items: center; opacity: 0.7; }
-    #top-bar .session-info { flex: 1; color: #E8ECE9; }
-    #top-bar .status { color: #00e5a0; }
-    #top-bar .status.disconnected { color: #DC2626; }
-    #terminal-container { height: calc(100vh - 30px); }
+    #top-bar .owl-icon { display: flex; align-items: center; opacity: 0.6; }
+    #top-bar .session-info { flex: 1; color: #E2EBE7; }
+    #top-bar .status { color: #00E5A0; }
+    #top-bar .status.disconnected { color: #F43F5E; }
+    #terminal-container { height: calc(100vh - 32px); }
     #reconnect-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
       z-index: 10;
       justify-content: center;
       align-items: center;
     }
     #reconnect-overlay.show { display: flex; }
     #reconnect-overlay button {
-      padding: 12px 28px;
-      background: #00e5a0;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #00E5A0, #38BDF8);
       border: none;
-      color: #0A0F0D;
+      color: #060B09;
       font-size: 15px;
       font-weight: 700;
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
       cursor: pointer;
-      border-radius: 6px;
+      border-radius: 10px;
+      transition: box-shadow 0.2s, transform 0.15s;
     }
-    #reconnect-overlay button:hover { background: #00C88A; }
+    #reconnect-overlay button:hover {
+      box-shadow: 0 4px 20px rgba(0,229,160,0.3);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
