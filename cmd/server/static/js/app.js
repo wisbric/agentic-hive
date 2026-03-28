@@ -231,10 +231,11 @@
     await loadSessions(id);
   };
 
-  async function loadSessions(serverID) {
+  async function loadSessions(serverID, live) {
     const container = document.getElementById('sessions-' + serverID);
     try {
-      const res = await api('GET', '/api/servers/' + serverID + '/sessions');
+      const url = '/api/servers/' + serverID + '/sessions' + (live ? '?live=true' : '');
+      const res = await api('GET', url);
       const sessions = await res.json();
       if (!sessions || sessions.length === 0) {
         container.innerHTML = '<p class="no-sessions">No active sessions</p>';
@@ -288,9 +289,9 @@
         command: command,
         workdir: workdir
       });
-      btn.textContent = 'Created!';
+      btn.textContent = 'Created! Loading...';
       btn.classList.add('btn-success');
-      await loadSessions(serverID);
+      await loadSessions(serverID, true);
       setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('btn-success'); }, 1500);
     } catch (e) {
       btn.textContent = 'Failed';
@@ -309,7 +310,7 @@
     try {
       await api('DELETE', '/api/servers/' + serverID + '/sessions/' + name);
       btn.textContent = 'Done';
-      await loadSessions(serverID);
+      await loadSessions(serverID, true);
     } catch (e) {
       btn.textContent = 'Failed';
       btn.classList.add('btn-error');

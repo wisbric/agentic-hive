@@ -402,7 +402,26 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	sessions := s.sessions.GetSessions(id)
+
+	var sessions []session.Session
+	if r.URL.Query().Get("live") == "true" {
+		// Live query: bypass cache, fetch directly from server via SSH
+		srv, err := s.store.GetServer(id)
+		if err != nil {
+			jsonError(w, "server not found", http.StatusNotFound)
+			return
+		}
+		live, err := s.sessions.ListSessions(r.Context(), srv)
+		if err != nil {
+			// Fall back to cache on error
+			sessions = s.sessions.GetSessions(id)
+		} else {
+			sessions = live
+		}
+	} else {
+		sessions = s.sessions.GetSessions(id)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(sessions)
 }
