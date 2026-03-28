@@ -484,7 +484,8 @@ main { padding: 28px; max-width: 960px; margin: 0 auto; }
 
 .settings-body {
   display: none;
-  padding: 0 24px 24px;
+  padding: 16px 24px 24px;
+  border-top: 1px solid var(--border);
 }
 
 .settings-body.open { display: block; animation: fade-in 0.25s ease-out; }
