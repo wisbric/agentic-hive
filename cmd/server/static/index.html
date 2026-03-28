@@ -125,6 +125,7 @@
               <span class="chevron" id="chevron-oidc">&#9654;</span>
             </div>
             <div class="settings-body" id="settings-body-oidc">
+              <p class="settings-hint">Configure an OIDC provider (Keycloak, Authentik, Dex, etc.) for single sign-on. Users are provisioned on first login.</p>
               <form id="oidc-settings-form">
                 <label id="lbl-oidc-issuer-url">Issuer URL</label>
                 <input type="url" id="oidc-issuer-url" placeholder="https://auth.example.com/realms/hive">
@@ -153,13 +154,16 @@
               <span class="chevron" id="chevron-vault">&#9654;</span>
             </div>
             <div class="settings-body" id="settings-body-vault">
+              <p class="settings-hint">SSH keys are stored in Vault KVv2 under <code>{secret path}/{server-id}</code> with data key <code>private_key</code>. The mount must be <code>secret/</code> (KVv2).</p>
               <form id="vault-settings-form">
                 <label id="lbl-vault-address">Vault Address</label>
-                <input type="url" id="vault-address" placeholder="https://vault.example.com">
+                <input type="url" id="vault-address" placeholder="https://vault.example.com:8200">
                 <label id="lbl-vault-token">Token</label>
                 <input type="password" id="vault-token" placeholder="Leave blank to keep current">
+                <p class="field-hint">A Vault token with read/write access to the secret path below.</p>
                 <label id="lbl-vault-secret-path">Secret Path</label>
-                <input type="text" id="vault-secret-path" placeholder="secret/global/opnsense-golden-image">
+                <input type="text" id="vault-secret-path" placeholder="agentic-hive/ssh-keys">
+                <p class="field-hint">Path within the <code>secret/</code> KVv2 mount. Keys stored as <code>secret/{path}/{server-id}</code> &rarr; <code>{"private_key": "..."}</code></p>
                 <div class="settings-actions">
                   <button type="button" id="test-vault-btn" class="btn-small" onclick="testVault()">Test Connection</button>
                   <button type="submit" class="btn">Save</button>

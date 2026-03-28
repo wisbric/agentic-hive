@@ -401,7 +401,15 @@ main { padding: 24px; max-width: 960px; margin: 0 auto; }
 .settings-actions {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.settings-actions .btn-small {
+  padding: 8px 16px;
+}
+.settings-actions .btn {
+  margin: 0;
 }
 
 .settings-status {
@@ -412,6 +420,24 @@ main { padding: 24px; max-width: 960px; margin: 0 auto; }
 
 .settings-status.success { color: var(--accent); }
 .settings-status.error { color: var(--danger); }
+
+.settings-hint {
+  color: var(--text-dim); font-size: 12px; line-height: 1.5;
+  margin-bottom: 12px; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+.settings-hint code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px; background: var(--border); padding: 1px 5px; border-radius: 3px;
+}
+.field-hint {
+  color: var(--text-dim); font-size: 11px; line-height: 1.4;
+  margin: 2px 0 6px;
+}
+.field-hint code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px; background: var(--border); padding: 1px 4px; border-radius: 2px;
+}
 
 /* User menu dropdown */
 .user-menu { position: relative; }

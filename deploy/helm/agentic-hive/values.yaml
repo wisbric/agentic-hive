@@ -26,7 +26,7 @@ keyStore:
     address: ""
     authMethod: token
     token: ""
-    secretPath: "secret/agentic-hive/ssh-keys"
+    secretPath: "agentic-hive/ssh-keys"
 
 config:
   sessionSecret: ""

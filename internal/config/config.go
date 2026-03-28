@@ -49,7 +49,7 @@ var oidcSettings = map[string]settingDef{
 var vaultSettings = map[string]settingDef{
 	"addr":        {envVar: "OVERLAY_VAULT_ADDR", defaultValue: ""},
 	"token":       {envVar: "OVERLAY_VAULT_TOKEN", defaultValue: "", isSecret: true},
-	"secret_path": {envVar: "OVERLAY_VAULT_SECRET_PATH", defaultValue: "secret/agentic-hive/ssh-keys"},
+	"secret_path": {envVar: "OVERLAY_VAULT_SECRET_PATH", defaultValue: "agentic-hive/ssh-keys"},
 }
 
 // generalSettings lists general/top-level settings.
@@ -216,7 +216,7 @@ func Load() *Config {
 
 		VaultAddr:       envOr("OVERLAY_VAULT_ADDR", ""),
 		VaultToken:      envOr("OVERLAY_VAULT_TOKEN", ""),
-		VaultSecretPath: envOr("OVERLAY_VAULT_SECRET_PATH", "secret/agentic-hive/ssh-keys"),
+		VaultSecretPath: envOr("OVERLAY_VAULT_SECRET_PATH", "agentic-hive/ssh-keys"),
 
 		EncryptionSecret: envOr("OVERLAY_ENCRYPTION_SECRET", ""),
 
