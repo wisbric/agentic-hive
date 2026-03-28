@@ -457,13 +457,49 @@ main { padding: 24px; max-width: 960px; margin: 0 auto; }
 .user-menu-dropdown hr { border: none; border-top: 1px solid var(--border); margin: 0; }
 
 /* About modal */
-.modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 200; display: flex; align-items: center; justify-content: center; }
-.modal-backdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); }
-.modal-content { position: relative; max-width: 400px; width: 90%; z-index: 201; }
-.about-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.about-header h2 { margin: 0; }
-.about-desc { color: var(--text-dim); font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
-.about-info { background: var(--bg); border-radius: 6px; padding: 12px; margin-bottom: 16px; }
-.about-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
-.about-label { color: var(--text-dim); }
-.about-footer { text-align: center; color: var(--text-dim); font-size: 13px; }
+.modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 200; display: flex; align-items: center; justify-content: center;
+}
+.modal-backdrop {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+}
+.modal-content {
+  position: relative; max-width: 480px; width: 92%;
+  z-index: 201;
+}
+.about-card { padding: 36px 32px; text-align: center; }
+.about-logo { margin-bottom: 16px; }
+.about-title {
+  font-size: 22px; font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.about-desc {
+  color: var(--text-dim); font-size: 14px; line-height: 1.6;
+  margin-bottom: 24px; max-width: 380px; margin-left: auto; margin-right: auto;
+}
+.about-info {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;
+  text-align: left;
+}
+.about-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; font-size: 13px;
+}
+.about-row + .about-row { border-top: 1px solid var(--border); }
+.about-label { color: var(--text-dim); font-weight: 500; }
+.about-value-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px; word-break: break-all;
+  max-width: 220px; text-align: right;
+}
+.about-footer {
+  text-align: center; color: var(--text-dim); font-size: 13px;
+  margin-bottom: 8px; padding-top: 8px;
+}
+.about-footer strong { color: var(--accent); }
+.about-close-btn { width: 100%; margin-top: 12px; }

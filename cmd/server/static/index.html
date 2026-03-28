@@ -173,19 +173,19 @@
       </main>
     <div id="about-modal" class="modal" style="display:none">
       <div class="modal-backdrop" onclick="closeAbout()"></div>
-      <div class="card modal-content">
-        <div class="about-header">
-          <img src="/static/img/owl-logo.png" alt="Agentic Hive" height="48">
-          <h2>Agentic Hive</h2>
+      <div class="card modal-content about-card">
+        <div class="about-logo">
+          <img src="/static/img/owl-logo.png" alt="Agentic Hive" height="56">
         </div>
+        <h2 class="about-title">Agentic Hive</h2>
         <p class="about-desc">Terminal session management hub for AI coding agents. Manage Claude Code, Codex, and shell sessions across remote hosts from a single dashboard.</p>
         <div class="about-info">
           <div class="about-row"><span class="about-label">Version</span><span id="about-version">dev</span></div>
-          <div class="about-row"><span class="about-label">Commit</span><span id="about-commit">unknown</span></div>
+          <div class="about-row"><span class="about-label">Commit</span><span class="about-value-mono" id="about-commit">unknown</span></div>
           <div class="about-row"><span class="about-label">Uptime</span><span id="about-uptime">-</span></div>
         </div>
-        <p class="about-footer">A <strong>Wisbric</strong> product</p>
-        <button onclick="closeAbout()" class="btn" style="width:100%;margin-top:16px">Close</button>
+        <div class="about-footer">A <strong>Wisbric</strong> product</div>
+        <button onclick="closeAbout()" class="btn about-close-btn">Close</button>
       </div>
     </div>
   </div>

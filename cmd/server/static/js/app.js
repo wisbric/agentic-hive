@@ -650,11 +650,11 @@
         return;
       }
 
-      // Try to access a protected route to check if already logged in
-      const res = await fetch('/api/servers', { credentials: 'same-origin' });
-      if (res.ok) {
-        // Fetch current user info from session cookie — read username from cookie or session
-        // We don't have a /api/me endpoint, so check if we can parse the session
+      // Check if already logged in via /api/me
+      const meRes = await fetch('/api/me', { credentials: 'same-origin' });
+      if (meRes.ok) {
+        const me = await meRes.json();
+        currentUser = me.username;
         showDashboard();
       } else {
         showView('login');

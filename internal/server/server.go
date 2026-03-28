@@ -194,6 +194,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /readyz", s.handleReadyz)
 	s.mux.HandleFunc("GET /api/about", s.handleAbout)
 
+	// Current user (auth required)
+	s.mux.Handle("GET /api/me", am(http.HandlerFunc(s.handleMe)))
+
 	// Auth (no auth required)
 	s.mux.Handle("POST /api/auth/login", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleLogin)))
 	s.mux.Handle("POST /api/auth/setup", s.rateLimiter.Middleware(http.HandlerFunc(s.localAuth.HandleSetup)))
@@ -252,6 +255,19 @@ func (s *Server) routes() {
 			w.Write(data)
 		})
 	}
+}
+
+func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
+	user := auth.GetUser(r)
+	if user == nil {
+		jsonError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"username": user.Username,
+		"role":     user.Role,
+	})
 }
 
 func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
