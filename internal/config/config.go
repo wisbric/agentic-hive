@@ -151,7 +151,8 @@ func (c *Config) ApplyDBSettings(dbSettings map[string]string) {
 	applyStr("OVERLAY_VAULT_SECRET_PATH", "vault.secret_path", &c.VaultSecretPath)
 
 	// Auto-detect keystore backend: if vault address + token are configured, switch to vault
-	if c.VaultAddr != "" && c.VaultToken != "" && os.Getenv("OVERLAY_KEYSTORE_BACKEND") == "" {
+	// Override even when env var is set to default "local" — the DB vault config is more specific
+	if c.VaultAddr != "" && c.VaultToken != "" {
 		c.KeyStoreBackend = "vault"
 		slog.Info("auto-detected vault keystore from DB settings", "addr", c.VaultAddr)
 	}
