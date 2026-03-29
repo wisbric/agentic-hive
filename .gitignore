@@ -1,4 +1,5 @@
-# Go
+# Binary
+/agentic-hive
 /claude-overlay
 *.exe
 *.test
@@ -9,11 +10,17 @@
 *.db-wal
 *.db-shm
 
+# Node (playwright, etc.)
+node_modules/
+package.json
+package-lock.json
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
@@ -22,3 +29,11 @@ Thumbs.db
 # Build
 /tmp/
 /dist/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# Environment
+.env
+.env.local

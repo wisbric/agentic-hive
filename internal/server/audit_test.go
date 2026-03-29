@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 func TestAuditLogEndpointAdminOnly(t *testing.T) {

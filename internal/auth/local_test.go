@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 

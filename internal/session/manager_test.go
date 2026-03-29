@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 func TestParseSessions(t *testing.T) {

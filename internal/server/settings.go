@@ -11,10 +11,10 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/hashicorp/vault/api"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/auth"
+	"github.com/wisbric/agentic-hive/internal/config"
+	"github.com/wisbric/agentic-hive/internal/keystore"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 // handleGetSettings returns all resolved settings with source attribution.

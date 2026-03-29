@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/auth"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 // logAudit writes an audit entry to the store and emits an slog message.

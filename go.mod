@@ -1,4 +1,4 @@
-module gitlab.com/adfinisde/agentic-workspace/agentic-hive
+module github.com/wisbric/agentic-hive
 
 go 1.26.0
 

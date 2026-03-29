@@ -9,7 +9,7 @@ RUN go mod download
 COPY . .
 ARG VERSION=dev
 ARG COMMIT=unknown
-RUN CGO_ENABLED=1 go build -ldflags "-X gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/server.Version=${VERSION} -X gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/server.Commit=${COMMIT}" -o /agentic-hive ./cmd/server
+RUN CGO_ENABLED=1 go build -ldflags "-X github.com/wisbric/agentic-hive/internal/server.Version=${VERSION} -X github.com/wisbric/agentic-hive/internal/server.Commit=${COMMIT}" -o /agentic-hive ./cmd/server
 
 FROM alpine:3.21
 RUN apk add --no-cache openssh-client ca-certificates

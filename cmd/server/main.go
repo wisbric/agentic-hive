@@ -13,15 +13,15 @@ import (
 	"syscall"
 	"time"
 
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/auth"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/backup"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/keystore"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/server"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/session"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/sshpool"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/auth"
+	"github.com/wisbric/agentic-hive/internal/backup"
+	"github.com/wisbric/agentic-hive/internal/config"
+	"github.com/wisbric/agentic-hive/internal/keystore"
+	"github.com/wisbric/agentic-hive/internal/metrics"
+	"github.com/wisbric/agentic-hive/internal/server"
+	"github.com/wisbric/agentic-hive/internal/session"
+	"github.com/wisbric/agentic-hive/internal/sshpool"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 //go:embed all:static

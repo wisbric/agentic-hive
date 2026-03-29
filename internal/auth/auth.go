@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/metrics"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/metrics"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 const SessionTTL = 24 * time.Hour

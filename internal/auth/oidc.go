@@ -9,8 +9,8 @@ import (
 	"slices"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/config"
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/config"
+	"github.com/wisbric/agentic-hive/internal/store"
 	"golang.org/x/oauth2"
 )
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/adfinisde/agentic-workspace/agentic-hive/internal/store"
+	"github.com/wisbric/agentic-hive/internal/store"
 )
 
 // makeAdminRequest constructs an HTTP request with admin session + CSRF tokens.
