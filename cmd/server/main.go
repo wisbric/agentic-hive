@@ -146,14 +146,16 @@ func main() {
 
 	srv := server.New(cfg, st, pool, ks, sm, staticFS)
 
-	if cfg.AuthMode == "oidc" && cfg.OIDCIssuerURL != "" {
+	// Initialize OIDC if configured (via env vars OR DB settings)
+	if cfg.OIDCIssuerURL != "" && cfg.OIDCClientID != "" {
 		oidcHandler, err := auth.NewOIDCHandler(context.Background(), st, cfg)
 		if err != nil {
-			slog.Error("failed to initialize OIDC", "error", err)
-			os.Exit(1)
+			// Non-fatal: OIDC can be reconfigured via admin UI
+			slog.Warn("OIDC initialization failed (can be reconfigured via admin UI)", "error", err, "issuer", cfg.OIDCIssuerURL)
+		} else {
+			server.SetOIDCHandler(srv, oidcHandler)
+			slog.Info("oidc enabled", "issuer", cfg.OIDCIssuerURL)
 		}
-		server.SetOIDCHandler(srv, oidcHandler)
-		slog.Info("oidc enabled", "issuer", cfg.OIDCIssuerURL)
 	}
 
 	slog.Info("server starting", "auth", cfg.AuthMode, "keystore", cfg.KeyStoreBackend)
