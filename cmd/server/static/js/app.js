@@ -675,6 +675,12 @@
         return;
       }
 
+      // Show SSO button if OIDC is configured
+      if (setupData.oidc_available) {
+        const ssoDiv = document.getElementById('login-sso');
+        if (ssoDiv) ssoDiv.style.display = '';
+      }
+
       // Check if already logged in via /api/me
       const meRes = await fetch('/api/me', { credentials: 'same-origin' });
       if (meRes.ok) {

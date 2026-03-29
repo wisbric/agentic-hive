@@ -345,7 +345,10 @@ func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"needed": s.localAuth.SetupNeeded()})
+	json.NewEncoder(w).Encode(map[string]any{
+		"needed":         s.localAuth.SetupNeeded(),
+		"oidc_available": s.oidcHandler.IsConfigured(),
+	})
 }
 
 func (s *Server) handleListServers(w http.ResponseWriter, r *http.Request) {
