@@ -424,18 +424,21 @@
       if (!res.ok) return;
       const s = await res.json();
 
+      const oidc = s.oidc || {};
+      const vault = s.vault || {};
+
       // OIDC fields
-      setFieldFromSetting('oidc-issuer-url',   'lbl-oidc-issuer-url',   s['oidc.issuer_url']);
-      setFieldFromSetting('oidc-client-id',    'lbl-oidc-client-id',    s['oidc.client_id']);
-      setSecretFieldFromSetting('oidc-client-secret', 'lbl-oidc-client-secret', s['oidc.client_secret']);
-      setFieldFromSetting('oidc-redirect-url', 'lbl-oidc-redirect-url', s['oidc.redirect_url']);
-      setFieldFromSetting('oidc-roles-claim',  'lbl-oidc-roles-claim',  s['oidc.roles_claim']);
-      setFieldFromSetting('oidc-admin-group',  'lbl-oidc-admin-group',  s['oidc.admin_group']);
+      setFieldFromSetting('oidc-issuer-url',   'lbl-oidc-issuer-url',   oidc.issuer_url);
+      setFieldFromSetting('oidc-client-id',    'lbl-oidc-client-id',    oidc.client_id);
+      setSecretFieldFromSetting('oidc-client-secret', 'lbl-oidc-client-secret', oidc.client_secret);
+      setFieldFromSetting('oidc-redirect-url', 'lbl-oidc-redirect-url', oidc.redirect_url);
+      setFieldFromSetting('oidc-roles-claim',  'lbl-oidc-roles-claim',  oidc.roles_claim);
+      setFieldFromSetting('oidc-admin-group',  'lbl-oidc-admin-group',  oidc.admin_group);
 
       // Vault fields
-      setFieldFromSetting('vault-address',     'lbl-vault-address',     s['vault.address']);
-      setSecretFieldFromSetting('vault-token', 'lbl-vault-token',       s['vault.token']);
-      setFieldFromSetting('vault-secret-path', 'lbl-vault-secret-path', s['vault.secret_path']);
+      setFieldFromSetting('vault-address',     'lbl-vault-address',     vault.address);
+      setSecretFieldFromSetting('vault-token', 'lbl-vault-token',       vault.token);
+      setFieldFromSetting('vault-secret-path', 'lbl-vault-secret-path', vault.secret_path);
 
     } catch (e) {
       // Settings endpoint may not exist yet — fail silently
@@ -464,13 +467,27 @@
 
   document.getElementById('oidc-settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await saveOIDCSettings();
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    await saveSettingsWithFeedback(btn, saveOIDCSettings);
   });
 
   document.getElementById('vault-settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await saveVaultSettings();
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    await saveSettingsWithFeedback(btn, saveVaultSettings);
   });
+
+  async function saveSettingsWithFeedback(btn, saveFn) {
+    if (!btn) { await saveFn(); return; }
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    await saveFn();
+    btn.textContent = 'Saved!';
+    btn.classList.add('btn-success');
+    await loadSettings(); // reload to show current values
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.classList.remove('btn-success'); }, 1500);
+  }
 
   async function saveOIDCSettings() {
     const values = collectFormValues([
