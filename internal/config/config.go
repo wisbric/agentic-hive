@@ -154,7 +154,7 @@ func (c *Config) ApplyDBSettings(dbSettings map[string]string) {
 	// Override even when env var is set to default "local" — the DB vault config is more specific
 	if c.VaultAddr != "" && c.VaultToken != "" {
 		c.KeyStoreBackend = "vault"
-		slog.Info("auto-detected vault keystore from DB settings", "addr", c.VaultAddr)
+		slog.Debug("auto-detected vault keystore from DB settings", "addr", c.VaultAddr)
 	}
 
 	// General

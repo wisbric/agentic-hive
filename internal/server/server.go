@@ -390,6 +390,10 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 	if req.KeySource == "" {
 		req.KeySource = "local"
 	}
+	if req.KeySource != "local" && req.KeySource != "vault_ref" {
+		jsonError(w, "keySource must be 'local' or 'vault_ref'", http.StatusBadRequest)
+		return
+	}
 
 	// Validate vault_ref: Vault must be configured and path must be readable.
 	if req.KeySource == "vault_ref" {
