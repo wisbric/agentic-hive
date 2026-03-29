@@ -4,9 +4,9 @@
 
 Go web application for managing tmux sessions across remote SSH hosts. Single binary, SQLite persistence, Helm chart for Kubernetes deployment.
 
-**Repo:** `gitlab.com/adfinisde/agentic-workspace/agentic-hive`
-**Live:** https://hive.dev-ai.wisbric.com
-**Cluster:** rke2-projects, namespace `agentic-hive`
+**Repo:** `github.com/your-org/agentic-hive`
+**Live:** https://hive.example.com (configure your own deployment)
+**Cluster:** your-cluster, namespace `agentic-hive`
 
 ## Structure
 
@@ -41,7 +41,7 @@ CI builds on push to main. To deploy manually:
 ```bash
 SHA=$(git rev-parse --short=8 HEAD)
 helm upgrade agentic-hive deploy/helm/agentic-hive \
-  --namespace agentic-hive --kube-context rke2-projects \
+  --namespace agentic-hive --kube-context your-cluster \
   --reuse-values --set image.tag=$SHA
 ```
 
@@ -66,7 +66,7 @@ helm upgrade agentic-hive deploy/helm/agentic-hive \
 
 ## Important Notes
 
-- `go.mod` module path is `gitlab.com/adfinisde/agentic-workspace/agentic-hive` but the local directory is still named `claude-overlay` (legacy)
+- `go.mod` module path is `github.com/your-org/agentic-hive` — update this to match your actual repository path
 - CGO is required for sqlite3 — the Dockerfile uses `golang:1.26-alpine` with `gcc musl-dev`
 - The Vault secret path should NOT include the `secret/` mount prefix (KVv2 client adds it automatically)
 - `OVERLAY_SESSION_SECRET` is required — binary refuses to start without it

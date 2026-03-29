@@ -3,7 +3,7 @@
 A lightweight web application for managing tmux sessions across multiple remote hosts. Access your Claude Code, Codex, or shell sessions from anywhere — via browser terminal or SSH command.
 
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square)
-![License](https://img.shields.io/badge/license-proprietary-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)
 
 ## Features
 
@@ -25,7 +25,7 @@ A lightweight web application for managing tmux sessions across multiple remote 
 docker run -p 8080:8080 \
   -e OVERLAY_SESSION_SECRET=$(openssl rand -hex 32) \
   -v hive-data:/data \
-  registry.gitlab.com/adfinisde/agentic-workspace/agentic-hive:latest
+  ghcr.io/your-org/agentic-hive:latest
 ```
 
 Open http://localhost:8080 — create your admin account on first visit.
@@ -34,7 +34,7 @@ Open http://localhost:8080 — create your admin account on first visit.
 
 ```bash
 helm install agentic-hive \
-  oci://registry.gitlab.com/adfinisde/agentic-workspace/agentic-hive/helm/agentic-hive \
+  oci://ghcr.io/your-org/agentic-hive/helm/agentic-hive \
   --set config.sessionSecret=$(openssl rand -hex 32) \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host=hive.example.com \
@@ -198,6 +198,10 @@ OVERLAY_LOG_LEVEL=debug \
 ./agentic-hive
 ```
 
+## Screenshots
+
+<!-- TODO: Add screenshots of dashboard and terminal -->
+
 ## License
 
-Proprietary. All rights reserved.
+Apache License 2.0. See [LICENSE](LICENSE) for details.

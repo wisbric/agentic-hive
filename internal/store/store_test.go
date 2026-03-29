@@ -147,7 +147,7 @@ func TestUserCount(t *testing.T) {
 func TestCreateAndGetServer(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("devbox", "devbox.wisbric.com", 22, "stefan", "")
+	srv, err := s.CreateServer("devbox", "devbox.example.com", 22, "stefan", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -162,8 +162,8 @@ func TestCreateAndGetServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetServer failed: %v", err)
 	}
-	if got.Host != "devbox.wisbric.com" {
-		t.Errorf("Host = %q, want %q", got.Host, "devbox.wisbric.com")
+	if got.Host != "devbox.example.com" {
+		t.Errorf("Host = %q, want %q", got.Host, "devbox.example.com")
 	}
 }
 

@@ -1,0 +1,15 @@
+services:
+  agentic-hive:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - OVERLAY_SESSION_SECRET=${OVERLAY_SESSION_SECRET}
+      - OVERLAY_DB_PATH=/data/overlay.db
+      - OVERLAY_LOG_LEVEL=info
+    volumes:
+      - hive-data:/data
+    restart: unless-stopped
+
+volumes:
+  hive-data:

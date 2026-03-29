@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.gitlab.com/adfinisde/agentic-workspace/agentic-hive
+  repository: ghcr.io/your-org/agentic-hive
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -52,7 +52,7 @@ ingress:
   className: nginx
   annotations: {}
   hosts:
-    - host: overlay.dev-ai.wisbric.com
+    - host: hive.example.com
       paths:
         - path: /
           pathType: Prefix

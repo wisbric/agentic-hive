@@ -10,7 +10,7 @@ import (
 func TestParseSessions(t *testing.T) {
 	srv := &store.Server{
 		SSHUser: "stefan",
-		Host:    "devbox.wisbric.com",
+		Host:    "devbox.example.com",
 	}
 
 	output := "stefan-claude-abc123:1711526400:1:0:1711530000\nstefan-shell-def456:1711526500:2:1:1711530100\n"
@@ -33,7 +33,7 @@ func TestParseSessions(t *testing.T) {
 		t.Errorf("sessions[1].Attached = %d, want 1", sessions[1].Attached)
 	}
 
-	expectedCmd := `ssh -t stefan@devbox.wisbric.com "tmux new -A -s stefan-claude-abc123"`
+	expectedCmd := `ssh -t stefan@devbox.example.com "tmux new -A -s stefan-claude-abc123"`
 	if sessions[0].SSHCommand != expectedCmd {
 		t.Errorf("SSHCommand = %q, want %q", sessions[0].SSHCommand, expectedCmd)
 	}

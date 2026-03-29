@@ -55,7 +55,7 @@ OIDC, Vault, and poll interval are currently configured exclusively via environm
       "issuer_url": {"value": "https://auth.example.com/realms/hive", "source": "db"},
       "client_id": {"value": "agentic-hive", "source": "db"},
       "client_secret": {"value": "****", "source": "db", "is_set": true},
-      "redirect_url": {"value": "https://hive.dev-ai.wisbric.com/api/auth/oidc/callback", "source": "db"},
+      "redirect_url": {"value": "https://hive.example.com/api/auth/oidc/callback", "source": "db"},
       "roles_claim": {"value": "groups", "source": "default"},
       "admin_group": {"value": "overlay-admin", "source": "default"}
     },
