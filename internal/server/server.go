@@ -207,12 +207,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/auth/oidc/login", s.oidcHandler.HandleLogin)
 	s.mux.HandleFunc("GET /api/auth/oidc/callback", s.oidcHandler.HandleCallback)
 
-	// Servers
+	// Servers — any user can create/manage their own, delete checks ownership (admin can delete any)
 	s.mux.Handle("GET /api/servers", am(http.HandlerFunc(s.handleListServers)))
-	s.mux.Handle("POST /api/servers", adminM(http.HandlerFunc(s.handleCreateServer)))
-	s.mux.Handle("DELETE /api/servers/{id}", adminM(http.HandlerFunc(s.handleDeleteServer)))
-	s.mux.Handle("PUT /api/servers/{id}/key", adminM(http.HandlerFunc(s.handleUploadKey)))
-	s.mux.Handle("POST /api/servers/{id}/accept-key", adminM(http.HandlerFunc(s.handleAcceptKey))) // TODO(PRP-9): restrict to admin
+	s.mux.Handle("POST /api/servers", am(http.HandlerFunc(s.handleCreateServer)))
+	s.mux.Handle("DELETE /api/servers/{id}", am(http.HandlerFunc(s.handleDeleteServer)))
+	s.mux.Handle("PUT /api/servers/{id}/key", am(http.HandlerFunc(s.handleUploadKey)))
+	s.mux.Handle("POST /api/servers/{id}/accept-key", am(http.HandlerFunc(s.handleAcceptKey)))
 
 	// Sessions
 	s.mux.Handle("GET /api/servers/{id}/sessions", am(http.HandlerFunc(s.handleListSessions)))
@@ -264,9 +264,10 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"username": user.Username,
-		"role":     user.Role,
+	json.NewEncoder(w).Encode(map[string]any{
+		"username":        user.Username,
+		"role":            user.Role,
+		"vault_available": s.keyStore.Backend() == "vault",
 	})
 }
 

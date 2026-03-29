@@ -76,11 +76,26 @@
         <div id="add-server-section" style="display:none">
           <h2>Add Server</h2>
           <form id="add-server-form" class="card">
-            <input type="text" id="server-name" placeholder="Display name" required>
-            <input type="text" id="server-host" placeholder="Hostname or IP" required>
-            <input type="number" id="server-port" placeholder="Port (22)" value="22">
-            <input type="text" id="server-user" placeholder="SSH user" required>
-            <textarea id="server-key" placeholder="Paste SSH private key" rows="6" required></textarea>
+            <label>Display Name</label>
+            <input type="text" id="server-name" placeholder="e.g. devbox, staging" required>
+            <label>Hostname or IP</label>
+            <input type="text" id="server-host" placeholder="devbox.example.com" required>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1"><label>SSH User</label><input type="text" id="server-user" placeholder="stefan" required></div>
+              <div style="width:100px"><label>Port</label><input type="number" id="server-port" placeholder="22" value="22"></div>
+            </div>
+            <label>SSH Private Key</label>
+            <div id="key-source-toggle" class="key-source-toggle">
+              <button type="button" class="key-tab active" data-source="paste" onclick="switchKeySource('paste')">Paste Key</button>
+              <button type="button" class="key-tab" data-source="vault" id="vault-key-tab" onclick="switchKeySource('vault')" style="display:none">From Vault</button>
+            </div>
+            <div id="key-source-paste">
+              <textarea id="server-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----" rows="5"></textarea>
+            </div>
+            <div id="key-source-vault" style="display:none">
+              <input type="text" id="server-vault-path" placeholder="Vault KV path (e.g. servers/devbox)">
+              <p class="field-hint">Full path will be: <code>secret/{configured-path}/{value}</code></p>
+            </div>
             <button type="submit">Add Server</button>
           </form>
         </div>

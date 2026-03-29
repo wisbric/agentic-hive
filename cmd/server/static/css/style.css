@@ -186,6 +186,36 @@ button:active, .btn:active { transform: translateY(0); }
   transform: none;
 }
 
+/* Key source tabs for add server form */
+.key-source-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.key-tab {
+  flex: 1;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  background: transparent !important;
+  color: var(--text-dim) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.key-tab:hover { background: var(--surface-hover) !important; }
+.key-tab.active {
+  background: var(--glow) !important;
+  color: var(--accent) !important;
+}
+
 .btn-danger {
   background: linear-gradient(135deg, var(--danger), #E11D48);
   color: #fff;

@@ -74,10 +74,29 @@
   window.doLogout = async function() { await api('POST', '/api/auth/logout'); currentUser = null; showView('login'); };
 
   // --- Add Server ---
+  let vaultAvailable = false;
+  let addServerKeySource = 'paste';
+
   document.getElementById('show-add-server').addEventListener('click', () => {
     const section = document.getElementById('add-server-section');
-    section.style.display = section.style.display === 'none' ? '' : 'none';
+    const showBtn = document.getElementById('show-add-server');
+    if (section.style.display === 'none') {
+      section.style.display = '';
+      showBtn.style.opacity = '0.4';
+      showBtn.style.pointerEvents = 'none';
+    } else {
+      section.style.display = 'none';
+      showBtn.style.opacity = '';
+      showBtn.style.pointerEvents = '';
+    }
   });
+
+  window.switchKeySource = function(source) {
+    addServerKeySource = source;
+    document.getElementById('key-source-paste').style.display = source === 'paste' ? '' : 'none';
+    document.getElementById('key-source-vault').style.display = source === 'vault' ? '' : 'none';
+    document.querySelectorAll('.key-tab').forEach(t => t.classList.toggle('active', t.dataset.source === source));
+  };
 
   document.getElementById('add-server-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -85,7 +104,6 @@
     const host = document.getElementById('server-host').value;
     const port = parseInt(document.getElementById('server-port').value) || 22;
     const sshUser = document.getElementById('server-user').value;
-    const key = document.getElementById('server-key').value;
 
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
     const origText = btn.textContent;
@@ -99,20 +117,36 @@
 
       btn.textContent = 'Uploading key...';
 
-      // Upload key
-      await fetch('/api/servers/' + srv.ID + '/key', {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: { 'X-CSRF-Token': getCookie('csrf') },
-        body: key,
-      });
+      if (addServerKeySource === 'vault') {
+        const vaultPath = document.getElementById('server-vault-path').value;
+        if (!vaultPath) throw new Error('Vault path is required');
+        // Fetch key from vault via server-side, then upload
+        await fetch('/api/servers/' + srv.ID + '/key', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'X-CSRF-Token': getCookie('csrf'), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vault_path: vaultPath }),
+        });
+      } else {
+        const key = document.getElementById('server-key').value;
+        if (!key) throw new Error('SSH key is required');
+        await fetch('/api/servers/' + srv.ID + '/key', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'X-CSRF-Token': getCookie('csrf') },
+          body: key,
+        });
+      }
 
       btn.textContent = 'Added!';
       btn.classList.add('btn-success');
       document.getElementById('add-server-form').reset();
+      switchKeySource('paste');
       await loadServers();
       setTimeout(() => {
         document.getElementById('add-server-section').style.display = 'none';
+        document.getElementById('show-add-server').style.opacity = '';
+        document.getElementById('show-add-server').style.pointerEvents = '';
         btn.textContent = origText;
         btn.disabled = false;
         btn.classList.remove('btn-success');
@@ -686,6 +720,11 @@
       if (meRes.ok) {
         const me = await meRes.json();
         currentUser = me.username;
+        vaultAvailable = me.vault_available || false;
+        if (vaultAvailable) {
+          const vaultTab = document.getElementById('vault-key-tab');
+          if (vaultTab) vaultTab.style.display = '';
+        }
         showDashboard();
       } else {
         showView('login');

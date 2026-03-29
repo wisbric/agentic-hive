@@ -333,9 +333,8 @@ func TestAdminRoutesRequireAdminRole(t *testing.T) {
 		method string
 		path   string
 	}{
-		{"POST", "/api/servers"},
-		{"DELETE", "/api/servers/some-id"},
-		{"PUT", "/api/servers/some-id/key"},
+		{"GET", "/api/users"},
+		{"GET", "/api/admin/settings"},
 	}
 
 	for _, route := range adminRoutes {
