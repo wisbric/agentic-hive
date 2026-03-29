@@ -100,6 +100,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Load DB settings and merge with env config (env vars take precedence)
+	dbSettings, err := st.GetAllSettings()
+	if err != nil {
+		slog.Warn("failed to load DB settings, using env-only config", "error", err)
+	} else if len(dbSettings) > 0 {
+		cfg.ApplyDBSettings(dbSettings)
+		slog.Info("applied DB settings", "count", len(dbSettings))
+	}
+
 	// Initialize KeyStore
 	var innerKS keystore.KeyStore
 	switch cfg.KeyStoreBackend {
