@@ -489,7 +489,6 @@
       // Vault fields
       setFieldFromSetting('vault-address',     'lbl-vault-address',     vault.address);
       setSecretFieldFromSetting('vault-token', 'lbl-vault-token',       vault.token);
-      setFieldFromSetting('vault-secret-path', 'lbl-vault-secret-path', vault.secret_path);
 
     } catch (e) {
       // Settings endpoint may not exist yet — fail silently
@@ -566,7 +565,6 @@
     const values = collectFormValues([
       { key: 'vault.address',     inputId: 'vault-address' },
       { key: 'vault.token',       inputId: 'vault-token', isSecret: true },
-      { key: 'vault.secret_path', inputId: 'vault-secret-path' },
     ]);
     try {
       const res = await api('PUT', '/api/admin/settings', values);
