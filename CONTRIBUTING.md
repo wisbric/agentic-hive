@@ -15,7 +15,7 @@ Thank you for your interest in contributing!
 ### Build from source
 
 ```bash
-git clone https://github.com/your-org/agentic-hive.git
+git clone https://github.com/wisbric/agentic-hive.git
 cd agentic-hive
 go build -o agentic-hive ./cmd/server
 ```

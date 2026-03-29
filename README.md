@@ -25,7 +25,7 @@ A lightweight web application for managing tmux sessions across multiple remote 
 docker run -p 8080:8080 \
   -e OVERLAY_SESSION_SECRET=$(openssl rand -hex 32) \
   -v hive-data:/data \
-  ghcr.io/your-org/agentic-hive:latest
+  ghcr.io/wisbric/agentic-hive:latest
 ```
 
 Open http://localhost:8080 — create your admin account on first visit.
@@ -34,7 +34,7 @@ Open http://localhost:8080 — create your admin account on first visit.
 
 ```bash
 helm install agentic-hive \
-  oci://ghcr.io/your-org/agentic-hive/helm/agentic-hive \
+  oci://ghcr.io/wisbric/agentic-hive/helm/agentic-hive \
   --set config.sessionSecret=$(openssl rand -hex 32) \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host=hive.example.com \
