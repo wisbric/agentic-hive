@@ -186,11 +186,41 @@ button:active, .btn:active { transform: translateY(0); }
   transform: none;
 }
 
+/* Add server form */
+.add-server-card {
+  max-width: 640px;
+}
+.add-server-title {
+  margin: 0 0 20px !important;
+  font-size: 18px !important;
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.form-col { flex: 1; }
+.form-col-small { flex: 0 0 100px; }
+.form-col label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; font-weight: 500; }
+.add-server-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+.add-server-actions .btn-secondary {
+  display: inline-block;
+  width: auto;
+}
+
 /* Key source tabs for add server form */
 .key-source-toggle {
   display: flex;
   gap: 0;
-  margin-bottom: 8px;
+  margin-top: 8px;
+  margin-bottom: 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;

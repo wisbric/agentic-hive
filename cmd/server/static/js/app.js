@@ -61,8 +61,7 @@
     try {
       const res = await api('POST', '/api/auth/login', { username, password });
       if (res.ok) {
-        const data = await res.json();
-        currentUser = data.username;
+        await loadUserInfo();
         showDashboard();
       } else {
         document.getElementById('login-error').textContent = 'Invalid credentials';
@@ -73,23 +72,38 @@
   // --- Logout ---
   window.doLogout = async function() { await api('POST', '/api/auth/logout'); currentUser = null; showView('login'); };
 
+  async function loadUserInfo() {
+    try {
+      const res = await fetch('/api/me', { credentials: 'same-origin' });
+      if (res.ok) {
+        const me = await res.json();
+        currentUser = me.username;
+        vaultAvailable = me.vault_available || false;
+        if (vaultAvailable) {
+          const vaultTab = document.getElementById('vault-key-tab');
+          if (vaultTab) vaultTab.style.display = '';
+        }
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   // --- Add Server ---
   let vaultAvailable = false;
   let addServerKeySource = 'paste';
 
   document.getElementById('show-add-server').addEventListener('click', () => {
-    const section = document.getElementById('add-server-section');
-    const showBtn = document.getElementById('show-add-server');
-    if (section.style.display === 'none') {
-      section.style.display = '';
-      showBtn.style.opacity = '0.4';
-      showBtn.style.pointerEvents = 'none';
-    } else {
-      section.style.display = 'none';
-      showBtn.style.opacity = '';
-      showBtn.style.pointerEvents = '';
-    }
+    document.getElementById('add-server-section').style.display = '';
+    document.getElementById('show-add-server').style.display = 'none';
   });
+
+  window.hideAddServer = function() {
+    document.getElementById('add-server-section').style.display = 'none';
+    document.getElementById('show-add-server').style.display = '';
+    document.getElementById('add-server-form').reset();
+    switchKeySource('paste');
+  };
 
   window.switchKeySource = function(source) {
     addServerKeySource = source;
@@ -140,13 +154,9 @@
 
       btn.textContent = 'Added!';
       btn.classList.add('btn-success');
-      document.getElementById('add-server-form').reset();
-      switchKeySource('paste');
       await loadServers();
       setTimeout(() => {
-        document.getElementById('add-server-section').style.display = 'none';
-        document.getElementById('show-add-server').style.opacity = '';
-        document.getElementById('show-add-server').style.pointerEvents = '';
+        hideAddServer();
         btn.textContent = origText;
         btn.disabled = false;
         btn.classList.remove('btn-success');
@@ -716,15 +726,7 @@
       }
 
       // Check if already logged in via /api/me
-      const meRes = await fetch('/api/me', { credentials: 'same-origin' });
-      if (meRes.ok) {
-        const me = await meRes.json();
-        currentUser = me.username;
-        vaultAvailable = me.vault_available || false;
-        if (vaultAvailable) {
-          const vaultTab = document.getElementById('vault-key-tab');
-          if (vaultTab) vaultTab.style.display = '';
-        }
+      if (await loadUserInfo()) {
         showDashboard();
       } else {
         showView('login');
