@@ -47,7 +47,7 @@ var oidcSettings = map[string]settingDef{
 
 // vaultSettings lists all Vault-related settings.
 var vaultSettings = map[string]settingDef{
-	"addr":        {envVar: "OVERLAY_VAULT_ADDR", defaultValue: ""},
+	"address":     {envVar: "OVERLAY_VAULT_ADDR", defaultValue: ""},
 	"token":       {envVar: "OVERLAY_VAULT_TOKEN", defaultValue: "", isSecret: true},
 	"secret_path": {envVar: "OVERLAY_VAULT_SECRET_PATH", defaultValue: "agentic-hive/ssh-keys"},
 }
@@ -145,9 +145,14 @@ func (c *Config) ApplyDBSettings(dbSettings map[string]string) {
 	applyStr("OVERLAY_OIDC_ADMIN_GROUP", "oidc.admin_group", &c.OIDCAdminGroup)
 
 	// Vault
-	applyStr("OVERLAY_VAULT_ADDR", "vault.addr", &c.VaultAddr)
+	applyStr("OVERLAY_VAULT_ADDR", "vault.address", &c.VaultAddr)
 	applyStr("OVERLAY_VAULT_TOKEN", "vault.token", &c.VaultToken)
 	applyStr("OVERLAY_VAULT_SECRET_PATH", "vault.secret_path", &c.VaultSecretPath)
+
+	// Auto-detect keystore backend: if vault address + token are configured, switch to vault
+	if c.VaultAddr != "" && c.VaultToken != "" && os.Getenv("OVERLAY_KEYSTORE_BACKEND") == "" {
+		c.KeyStoreBackend = "vault"
+	}
 
 	// General
 	applyStr("OVERLAY_AUTH_MODE", "general.auth_mode", &c.AuthMode)

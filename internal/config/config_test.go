@@ -149,7 +149,7 @@ func TestResolveSettingsDBValues(t *testing.T) {
 		"oidc.issuer_url":    "https://db-idp.example.com",
 		"oidc.client_id":     "my-client",
 		"oidc.client_secret": "db-secret",
-		"vault.addr":         "https://vault.example.com",
+		"vault.address":         "https://vault.example.com",
 		"vault.token":        "db-vault-token",
 		"general.auth_mode":  "oidc",
 		"general.log_level":  "debug",
@@ -166,7 +166,7 @@ func TestResolveSettingsDBValues(t *testing.T) {
 	if sv := resolved.OIDC["client_secret"]; sv.Source != SourceDB || !sv.IsSet || sv.Value != "" {
 		t.Errorf("OIDC client_secret: source=%q IsSet=%v value=%q, want db/true/empty", sv.Source, sv.IsSet, sv.Value)
 	}
-	if sv := resolved.Vault["addr"]; sv.Source != SourceDB || sv.Value != "https://vault.example.com" {
+	if sv := resolved.Vault["address"]; sv.Source != SourceDB || sv.Value != "https://vault.example.com" {
 		t.Errorf("Vault addr: source=%q value=%q, want db/https://vault.example.com", sv.Source, sv.Value)
 	}
 	if sv := resolved.General["auth_mode"]; sv.Source != SourceDB || sv.Value != "oidc" {
@@ -185,7 +185,7 @@ func TestApplyDBSettings(t *testing.T) {
 		"oidc.issuer_url":       "https://idp.example.com",
 		"oidc.client_id":        "client-from-db",
 		"oidc.client_secret":    "secret-from-db",
-		"vault.addr":            "https://vault.example.com",
+		"vault.address":            "https://vault.example.com",
 		"vault.token":           "vault-token-from-db",
 		"vault.secret_path":     "secret/custom/path",
 		"general.auth_mode":     "oidc",
