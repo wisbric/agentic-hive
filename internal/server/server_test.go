@@ -167,7 +167,7 @@ func TestReadyzRequireServerUnreachable(t *testing.T) {
 	t.Cleanup(func() { st.Close() })
 
 	// Register a server but set it to unreachable
-	srv2, err := st.CreateServer("test", "192.0.2.1", 22, "root", "")
+	srv2, err := st.CreateServer("test", "192.0.2.1", 22, "root", "", "local", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -227,7 +227,7 @@ func TestReadyzRequireServerReachable(t *testing.T) {
 	}
 	t.Cleanup(func() { st.Close() })
 
-	srv2, err := st.CreateServer("test", "192.0.2.1", 22, "root", "")
+	srv2, err := st.CreateServer("test", "192.0.2.1", 22, "root", "", "local", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}

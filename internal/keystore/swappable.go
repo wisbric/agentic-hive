@@ -27,6 +27,12 @@ func (s *SwappableKeyStore) Get(ctx context.Context, serverID string) ([]byte, e
 	return s.inner.Get(ctx, serverID)
 }
 
+func (s *SwappableKeyStore) GetFromPath(ctx context.Context, vaultPath string) ([]byte, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.inner.GetFromPath(ctx, vaultPath)
+}
+
 func (s *SwappableKeyStore) Put(ctx context.Context, serverID string, key []byte) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

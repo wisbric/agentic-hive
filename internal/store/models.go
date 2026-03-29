@@ -35,15 +35,17 @@ type User struct {
 }
 
 type Server struct {
-	ID        string
-	Name      string
-	Host      string
-	Port      int
-	SSHUser   string
-	Status    string // "unknown", "reachable", "unreachable"
-	OwnerID   string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID           string
+	Name         string
+	Host         string
+	Port         int
+	SSHUser      string
+	Status       string // "unknown", "reachable", "unreachable"
+	OwnerID      string
+	KeySource    string // "local" or "vault_ref"
+	VaultKeyPath string // only when KeySource == "vault_ref"
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type SessionTemplate struct {

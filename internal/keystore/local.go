@@ -57,6 +57,10 @@ func (s *LocalKeyStore) Put(ctx context.Context, serverID string, key []byte) er
 	return nil
 }
 
+func (s *LocalKeyStore) GetFromPath(_ context.Context, _ string) ([]byte, error) {
+	return nil, fmt.Errorf("GetFromPath not supported on local keystore")
+}
+
 func (s *LocalKeyStore) Get(ctx context.Context, serverID string) ([]byte, error) {
 	var encrypted, salt, nonce []byte
 	err := s.db.QueryRowContext(ctx,

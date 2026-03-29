@@ -58,6 +58,20 @@ func (s *VaultKeyStore) Get(ctx context.Context, serverID string) ([]byte, error
 	return []byte(keyStr), nil
 }
 
+func (s *VaultKeyStore) GetFromPath(ctx context.Context, vaultPath string) ([]byte, error) {
+	secret, err := s.client.KVv2("secret").Get(ctx, vaultPath)
+	if err != nil {
+		return nil, fmt.Errorf("vault get path %q: %w", vaultPath, err)
+	}
+
+	keyStr, ok := secret.Data["private_key"].(string)
+	if !ok {
+		return nil, fmt.Errorf("vault: private_key not found or wrong type at path %q", vaultPath)
+	}
+
+	return []byte(keyStr), nil
+}
+
 func (s *VaultKeyStore) Delete(ctx context.Context, serverID string) error {
 	path := s.keyPath(serverID)
 	err := s.client.KVv2("secret").Delete(ctx, path)

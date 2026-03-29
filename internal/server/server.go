@@ -368,10 +368,12 @@ func (s *Server) handleListServers(w http.ResponseWriter, r *http.Request) {
 }
 
 type createServerRequest struct {
-	Name    string `json:"name"`
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
-	SSHUser string `json:"sshUser"`
+	Name         string `json:"name"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	SSHUser      string `json:"sshUser"`
+	KeySource    string `json:"keySource"`    // "local" or "vault_ref"
+	VaultKeyPath string `json:"vaultKeyPath"` // only when keySource == "vault_ref"
 }
 
 func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
@@ -384,6 +386,25 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 	if req.Port == 0 {
 		req.Port = 22
 	}
+	if req.KeySource == "" {
+		req.KeySource = "local"
+	}
+
+	// Validate vault_ref: Vault must be configured and path must be readable.
+	if req.KeySource == "vault_ref" {
+		if req.VaultKeyPath == "" {
+			jsonError(w, "vaultKeyPath is required when keySource is vault_ref", http.StatusBadRequest)
+			return
+		}
+		if s.keyStore.Backend() != "vault" {
+			jsonError(w, "vault is not configured; cannot use vault_ref key source", http.StatusBadRequest)
+			return
+		}
+		if _, err := s.keyStore.GetFromPath(r.Context(), req.VaultKeyPath); err != nil {
+			jsonError(w, "vault path not readable: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
 
 	user := auth.GetUser(r)
 	ownerID := ""
@@ -391,14 +412,14 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 		ownerID = user.UserID
 	}
 
-	srv, err := s.store.CreateServer(req.Name, req.Host, req.Port, req.SSHUser, ownerID)
+	srv, err := s.store.CreateServer(req.Name, req.Host, req.Port, req.SSHUser, ownerID, req.KeySource, req.VaultKeyPath)
 	if err != nil {
 		jsonError(w, "failed to create server", http.StatusInternalServerError)
 		return
 	}
 
 	logAudit(s, r, user, store.AuditServerCreate, "server", srv.ID,
-		fmt.Sprintf(`{"server_id":%q,"name":%q}`, srv.ID, srv.Name))
+		fmt.Sprintf(`{"server_id":%q,"name":%q,"key_source":%q}`, srv.ID, srv.Name, srv.KeySource))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -443,8 +464,13 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 	if user != nil && user.Role != store.RoleAdmin {
 		ownerID = user.UserID
 	}
-	if _, err := s.store.GetServer(id, ownerID); err != nil {
+	existingSrv, err := s.store.GetServer(id, ownerID)
+	if err != nil {
 		jsonError(w, "server not found", http.StatusNotFound)
+		return
+	}
+	if existingSrv.KeySource == "vault_ref" {
+		jsonError(w, "cannot upload key to a vault_ref server; key is managed via Vault path", http.StatusBadRequest)
 		return
 	}
 

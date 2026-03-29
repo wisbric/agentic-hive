@@ -29,13 +29,20 @@ func New(st *store.Store, ks keystore.KeyStore) *Pool {
 	}
 }
 
+func (p *Pool) getKey(ctx context.Context, srv *store.Server) ([]byte, error) {
+	if srv.KeySource == "vault_ref" && srv.VaultKeyPath != "" {
+		return p.keystore.GetFromPath(ctx, srv.VaultKeyPath)
+	}
+	return p.keystore.Get(ctx, srv.ID)
+}
+
 func (p *Pool) connect(ctx context.Context, serverID string) (*ssh.Client, error) {
 	srv, err := p.store.GetServer(serverID, "")
 	if err != nil {
 		return nil, fmt.Errorf("get server: %w", err)
 	}
 
-	keyBytes, err := p.keystore.Get(ctx, serverID)
+	keyBytes, err := p.getKey(ctx, srv)
 	if err != nil {
 		return nil, fmt.Errorf("get ssh key: %w", err)
 	}

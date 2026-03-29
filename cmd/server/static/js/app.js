@@ -125,23 +125,26 @@
     btn.textContent = 'Adding server...';
 
     try {
-      const res = await api('POST', '/api/servers', { name, host, port, sshUser });
-      if (!res.ok) throw new Error('Failed to create server');
+      let createBody;
+      if (addServerKeySource === 'vault') {
+        const vaultKeyPath = document.getElementById('server-vault-path').value;
+        if (!vaultKeyPath) throw new Error('Vault path is required');
+        createBody = { name, host, port, sshUser, keySource: 'vault_ref', vaultKeyPath };
+      } else {
+        createBody = { name, host, port, sshUser, keySource: 'local' };
+      }
+
+      const res = await api('POST', '/api/servers', createBody);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create server');
+      }
       const srv = await res.json();
 
-      btn.textContent = 'Uploading key...';
-
       if (addServerKeySource === 'vault') {
-        const vaultPath = document.getElementById('server-vault-path').value;
-        if (!vaultPath) throw new Error('Vault path is required');
-        // Fetch key from vault via server-side, then upload
-        await fetch('/api/servers/' + srv.ID + '/key', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          headers: { 'X-CSRF-Token': getCookie('csrf'), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vault_path: vaultPath }),
-        });
+        // vault_ref: no separate key upload needed
       } else {
+        btn.textContent = 'Uploading key...';
         const key = document.getElementById('server-key').value;
         if (!key) throw new Error('SSH key is required');
         await fetch('/api/servers/' + srv.ID + '/key', {
@@ -207,14 +210,18 @@
       return;
     }
 
-    container.innerHTML = servers.map(srv => `
+    container.innerHTML = servers.map(srv => {
+      const keyBadge = srv.KeySource === 'vault_ref'
+        ? `<span class="key-badge key-badge-vault" title="Key from Vault: ${esc(srv.VaultKeyPath)}">vault</span>`
+        : `<span class="key-badge key-badge-local" title="Locally managed key">local</span>`;
+      return `
       <div class="server-card" data-id="${srv.ID}">
         <div class="server-header" onclick="toggleServer('${srv.ID}')">
           <div class="server-name">
             <span class="status-dot ${srv.Status}"></span>
             ${esc(srv.Name)}
           </div>
-          <span class="server-host">${esc(srv.SSHUser)}@${esc(srv.Host)}:${srv.Port}</span>
+          <span class="server-host">${esc(srv.SSHUser)}@${esc(srv.Host)}:${srv.Port} ${keyBadge}</span>
         </div>
         <div class="server-body" id="body-${srv.ID}">
           <div id="sessions-${srv.ID}">Loading sessions...</div>
@@ -229,7 +236,7 @@
           <button class="btn-small btn-danger" style="margin-top:12px" onclick="deleteServer('${srv.ID}')">Remove Server</button>
         </div>
       </div>
-    `).join('');
+    `; }).join('');
 
     // Restore expanded state and re-fetch sessions for expanded servers
     expandedServers.forEach(id => {

@@ -28,6 +28,10 @@ func (m *mockKeyStore) Get(_ context.Context, id string) ([]byte, error) {
 	return v, nil
 }
 
+func (m *mockKeyStore) GetFromPath(_ context.Context, _ string) ([]byte, error) {
+	return nil, errors.New("GetFromPath not supported on mock keystore")
+}
+
 func (m *mockKeyStore) Put(_ context.Context, id string, key []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

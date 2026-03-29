@@ -32,8 +32,8 @@ func TestOpenAndMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query schema_version: %v", err)
 	}
-	if version < 3 {
-		t.Errorf("schema version = %d, want >= 3", version)
+	if version < 6 {
+		t.Errorf("schema version = %d, want >= 6", version)
 	}
 
 	// Verify core tables exist by querying them
@@ -147,7 +147,7 @@ func TestUserCount(t *testing.T) {
 func TestCreateAndGetServer(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("devbox", "devbox.example.com", 22, "stefan", "")
+	srv, err := s.CreateServer("devbox", "devbox.example.com", 22, "stefan", "", "local", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -170,8 +170,8 @@ func TestCreateAndGetServer(t *testing.T) {
 func TestListServers(t *testing.T) {
 	s := testStore(t)
 
-	_, _ = s.CreateServer("a", "a.example.com", 22, "root", "")
-	_, _ = s.CreateServer("b", "b.example.com", 2222, "deploy", "")
+	_, _ = s.CreateServer("a", "a.example.com", 22, "root", "", "local", "")
+	_, _ = s.CreateServer("b", "b.example.com", 2222, "deploy", "", "local", "")
 
 	servers, err := s.ListServers("")
 	if err != nil {
@@ -185,7 +185,7 @@ func TestListServers(t *testing.T) {
 func TestDeleteServer(t *testing.T) {
 	s := testStore(t)
 
-	srv, _ := s.CreateServer("del", "del.example.com", 22, "root", "")
+	srv, _ := s.CreateServer("del", "del.example.com", 22, "root", "", "local", "")
 	if err := s.DeleteServer(srv.ID); err != nil {
 		t.Fatalf("DeleteServer failed: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestDeleteServer(t *testing.T) {
 func TestUpdateServerStatus(t *testing.T) {
 	s := testStore(t)
 
-	srv, _ := s.CreateServer("s1", "s1.example.com", 22, "root", "")
+	srv, _ := s.CreateServer("s1", "s1.example.com", 22, "root", "", "local", "")
 	if err := s.UpdateServerStatus(srv.ID, "reachable"); err != nil {
 		t.Fatalf("UpdateServerStatus failed: %v", err)
 	}
