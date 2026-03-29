@@ -30,7 +30,7 @@ func New(st *store.Store, ks keystore.KeyStore) *Pool {
 }
 
 func (p *Pool) connect(ctx context.Context, serverID string) (*ssh.Client, error) {
-	srv, err := p.store.GetServer(serverID)
+	srv, err := p.store.GetServer(serverID, "")
 	if err != nil {
 		return nil, fmt.Errorf("get server: %w", err)
 	}

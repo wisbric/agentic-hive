@@ -123,6 +123,19 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify server ownership before upgrading to WebSocket
+	if b.store != nil {
+		user := auth.GetUser(r)
+		ownerID := ""
+		if user != nil && user.Role != store.RoleAdmin {
+			ownerID = user.UserID
+		}
+		if _, err := b.store.GetServer(serverID, ownerID); err != nil {
+			http.Error(w, `{"error":"server not found"}`, http.StatusNotFound)
+			return
+		}
+	}
+
 	// Upgrade to WebSocket
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

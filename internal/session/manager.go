@@ -80,7 +80,7 @@ func (m *Manager) ListSessions(ctx context.Context, srv *store.Server) ([]Sessio
 }
 
 func (m *Manager) CreateSession(ctx context.Context, serverID, user, label, command, workdir string) (string, error) {
-	srv, err := m.store.GetServer(serverID)
+	srv, err := m.store.GetServer(serverID, "")
 	if err != nil {
 		return "", err
 	}
@@ -162,7 +162,7 @@ func (m *Manager) Stop() {
 }
 
 func (m *Manager) pollAll(ctx context.Context) {
-	servers, err := m.store.ListServers()
+	servers, err := m.store.ListServers("")
 	if err != nil {
 		slog.Warn("session poll: list servers failed", "error", err)
 		return

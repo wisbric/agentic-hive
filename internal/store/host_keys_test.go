@@ -8,7 +8,7 @@ import (
 func TestStoreAndGetHostKey(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("hk-test", "hk.example.com", 22, "root")
+	srv, err := s.CreateServer("hk-test", "hk.example.com", 22, "root", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestStoreAndGetHostKey(t *testing.T) {
 func TestGetHostKeyMissing(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("hk-missing", "hk2.example.com", 22, "root")
+	srv, err := s.CreateServer("hk-missing", "hk2.example.com", 22, "root", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestGetHostKeyMissing(t *testing.T) {
 func TestDeleteHostKey(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("hk-del", "hk3.example.com", 22, "root")
+	srv, err := s.CreateServer("hk-del", "hk3.example.com", 22, "root", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestDeleteHostKeyNonexistent(t *testing.T) {
 func TestStoreHostKeyUpsert(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("hk-upsert", "hk4.example.com", 22, "root")
+	srv, err := s.CreateServer("hk-upsert", "hk4.example.com", 22, "root", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}

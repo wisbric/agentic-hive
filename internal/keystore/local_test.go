@@ -18,7 +18,7 @@ func setupTestDB(t *testing.T) (*sql.DB, string) {
 	}
 	t.Cleanup(func() { st.Close() })
 
-	srv, err := st.CreateServer("test", "test.example.com", 22, "root")
+	srv, err := st.CreateServer("test", "test.example.com", 22, "root", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}

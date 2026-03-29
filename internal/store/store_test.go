@@ -147,7 +147,7 @@ func TestUserCount(t *testing.T) {
 func TestCreateAndGetServer(t *testing.T) {
 	s := testStore(t)
 
-	srv, err := s.CreateServer("devbox", "devbox.wisbric.com", 22, "stefan")
+	srv, err := s.CreateServer("devbox", "devbox.wisbric.com", 22, "stefan", "")
 	if err != nil {
 		t.Fatalf("CreateServer failed: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestCreateAndGetServer(t *testing.T) {
 		t.Errorf("Status = %q, want %q", srv.Status, "unknown")
 	}
 
-	got, err := s.GetServer(srv.ID)
+	got, err := s.GetServer(srv.ID, "")
 	if err != nil {
 		t.Fatalf("GetServer failed: %v", err)
 	}
@@ -170,10 +170,10 @@ func TestCreateAndGetServer(t *testing.T) {
 func TestListServers(t *testing.T) {
 	s := testStore(t)
 
-	_, _ = s.CreateServer("a", "a.example.com", 22, "root")
-	_, _ = s.CreateServer("b", "b.example.com", 2222, "deploy")
+	_, _ = s.CreateServer("a", "a.example.com", 22, "root", "")
+	_, _ = s.CreateServer("b", "b.example.com", 2222, "deploy", "")
 
-	servers, err := s.ListServers()
+	servers, err := s.ListServers("")
 	if err != nil {
 		t.Fatalf("ListServers failed: %v", err)
 	}
@@ -185,12 +185,12 @@ func TestListServers(t *testing.T) {
 func TestDeleteServer(t *testing.T) {
 	s := testStore(t)
 
-	srv, _ := s.CreateServer("del", "del.example.com", 22, "root")
+	srv, _ := s.CreateServer("del", "del.example.com", 22, "root", "")
 	if err := s.DeleteServer(srv.ID); err != nil {
 		t.Fatalf("DeleteServer failed: %v", err)
 	}
 
-	servers, _ := s.ListServers()
+	servers, _ := s.ListServers("")
 	if len(servers) != 0 {
 		t.Errorf("len = %d, want 0 after delete", len(servers))
 	}
@@ -199,12 +199,12 @@ func TestDeleteServer(t *testing.T) {
 func TestUpdateServerStatus(t *testing.T) {
 	s := testStore(t)
 
-	srv, _ := s.CreateServer("s1", "s1.example.com", 22, "root")
+	srv, _ := s.CreateServer("s1", "s1.example.com", 22, "root", "")
 	if err := s.UpdateServerStatus(srv.ID, "reachable"); err != nil {
 		t.Fatalf("UpdateServerStatus failed: %v", err)
 	}
 
-	got, _ := s.GetServer(srv.ID)
+	got, _ := s.GetServer(srv.ID, "")
 	if got.Status != "reachable" {
 		t.Errorf("Status = %q, want %q", got.Status, "reachable")
 	}

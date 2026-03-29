@@ -41,6 +41,7 @@ type Server struct {
 	Port      int
 	SSHUser   string
 	Status    string // "unknown", "reachable", "unreachable"
+	OwnerID   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

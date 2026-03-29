@@ -126,7 +126,7 @@ func setupPool(t *testing.T, addr string) (*Pool, *store.Store, string) {
 	port := 22
 	fmt.Sscanf(portStr, "%d", &port)
 
-	srv, err := st.CreateServer("tofu-server", host, port, "testuser")
+	srv, err := st.CreateServer("tofu-server", host, port, "testuser", "")
 	if err != nil {
 		t.Fatalf("CreateServer: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestTOFUKeyMismatch(t *testing.T) {
 	}
 
 	// Server status should be updated to key_mismatch.
-	srv, dbErr := st.GetServer(serverID)
+	srv, dbErr := st.GetServer(serverID, "")
 	if dbErr != nil {
 		t.Fatalf("GetServer: %v", dbErr)
 	}

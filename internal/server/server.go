@@ -307,7 +307,7 @@ func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {
 
 	// Servers check (conditional)
 	if s.cfg.ReadyzRequireServer {
-		servers, err := s.store.ListServers()
+		servers, err := s.store.ListServers("")
 		if err != nil {
 			checks["servers"] = "error: " + err.Error()
 			overallOK = false
@@ -352,7 +352,12 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListServers(w http.ResponseWriter, r *http.Request) {
-	servers, err := s.store.ListServers()
+	user := auth.GetUser(r)
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
+	servers, err := s.store.ListServers(ownerID)
 	if err != nil {
 		jsonError(w, "failed to list servers", http.StatusInternalServerError)
 		return
@@ -379,13 +384,18 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 		req.Port = 22
 	}
 
-	srv, err := s.store.CreateServer(req.Name, req.Host, req.Port, req.SSHUser)
+	user := auth.GetUser(r)
+	ownerID := ""
+	if user != nil {
+		ownerID = user.UserID
+	}
+
+	srv, err := s.store.CreateServer(req.Name, req.Host, req.Port, req.SSHUser, ownerID)
 	if err != nil {
 		jsonError(w, "failed to create server", http.StatusInternalServerError)
 		return
 	}
 
-	user := auth.GetUser(r)
 	logAudit(s, r, user, store.AuditServerCreate, "server", srv.ID,
 		fmt.Sprintf(`{"server_id":%q,"name":%q}`, srv.ID, srv.Name))
 
@@ -396,6 +406,17 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	user := auth.GetUser(r)
+
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
+	if _, err := s.store.GetServer(id, ownerID); err != nil {
+		jsonError(w, "server not found", http.StatusNotFound)
+		return
+	}
+
 	if err := s.keyStore.Delete(r.Context(), id); err != nil {
 		slog.Warn("key delete failed", "server_id", id, "error", err)
 	}
@@ -406,7 +427,6 @@ func (s *Server) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := auth.GetUser(r)
 	logAudit(s, r, user, store.AuditServerDelete, "server", id,
 		fmt.Sprintf(`{"server_id":%q}`, id))
 
@@ -416,6 +436,16 @@ func (s *Server) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	user := auth.GetUser(r)
+
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
+	if _, err := s.store.GetServer(id, ownerID); err != nil {
+		jsonError(w, "server not found", http.StatusNotFound)
+		return
+	}
 
 	keyData, err := io.ReadAll(io.LimitReader(r.Body, 32*1024))
 	if err != nil {
@@ -432,7 +462,6 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 	_, _, err = s.pool.Exec(r.Context(), id, "echo ok")
 	if err != nil {
 		_ = s.store.UpdateServerStatus(id, store.StatusUnreachable)
-		user := auth.GetUser(r)
 		logAudit(s, r, user, store.AuditServerKeyUpload, "server", id,
 			fmt.Sprintf(`{"server_id":%q,"reachable":false}`, id))
 		w.Header().Set("Content-Type", "application/json")
@@ -441,7 +470,6 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = s.store.UpdateServerStatus(id, store.StatusReachable)
-	user := auth.GetUser(r)
 	logAudit(s, r, user, store.AuditServerKeyUpload, "server", id,
 		fmt.Sprintf(`{"server_id":%q,"reachable":true}`, id))
 	w.Header().Set("Content-Type", "application/json")
@@ -450,11 +478,17 @@ func (s *Server) handleUploadKey(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	user := auth.GetUser(r)
+
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
 
 	var sessions []session.Session
 	if r.URL.Query().Get("live") == "true" {
 		// Live query: bypass cache, fetch directly from server via SSH
-		srv, err := s.store.GetServer(id)
+		srv, err := s.store.GetServer(id, ownerID)
 		if err != nil {
 			jsonError(w, "server not found", http.StatusNotFound)
 			return
@@ -467,6 +501,11 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 			sessions = live
 		}
 	} else {
+		// Non-live: verify ownership before returning cached sessions
+		if _, err := s.store.GetServer(id, ownerID); err != nil {
+			jsonError(w, "server not found", http.StatusNotFound)
+			return
+		}
 		sessions = s.sessions.GetSessions(id)
 	}
 
@@ -483,6 +522,15 @@ type createSessionRequest struct {
 func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	user := auth.GetUser(r)
+
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
+	if _, err := s.store.GetServer(id, ownerID); err != nil {
+		jsonError(w, "server not found", http.StatusNotFound)
+		return
+	}
 
 	var req createSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -512,13 +560,22 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 	serverID := r.PathValue("id")
 	sessionName := r.PathValue("name")
+	user := auth.GetUser(r)
+
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
+	if _, err := s.store.GetServer(serverID, ownerID); err != nil {
+		jsonError(w, "server not found", http.StatusNotFound)
+		return
+	}
 
 	if err := s.sessions.KillSession(r.Context(), serverID, sessionName); err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	user := auth.GetUser(r)
 	logAudit(s, r, user, store.AuditSessionKill, "session", sessionName,
 		fmt.Sprintf(`{"server_id":%q,"session":%q}`, serverID, sessionName))
 
@@ -579,16 +636,31 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	authMode := "local"
+	if s.oidcHandler.IsConfigured() {
+		authMode = "oidc + local fallback"
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"authMode":        s.cfg.AuthMode,
-		"keyStoreBackend": s.cfg.KeyStoreBackend,
+		"authMode":        authMode,
+		"keyStoreBackend": s.keyStore.Backend(),
 		"pollInterval":    s.cfg.PollInterval,
 	})
 }
 
 func (s *Server) handleAcceptKey(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	user := auth.GetUser(r)
+
+	ownerID := ""
+	if user != nil && user.Role != store.RoleAdmin {
+		ownerID = user.UserID
+	}
+	if _, err := s.store.GetServer(id, ownerID); err != nil {
+		jsonError(w, "server not found", http.StatusNotFound)
+		return
+	}
+
 	if err := s.store.DeleteHostKey(id); err != nil {
 		jsonError(w, "failed to clear host key", http.StatusInternalServerError)
 		return
