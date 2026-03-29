@@ -203,7 +203,14 @@ OVERLAY_LOG_LEVEL=debug \
 ### Login
 ![Login](docs/screenshots/login.png)
 
-<!-- TODO: Add dashboard and terminal screenshots -->
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Sessions
+![Sessions](docs/screenshots/dashboard-sessions.png)
+
+### About
+![About](docs/screenshots/about.png)
 
 ## License
 
