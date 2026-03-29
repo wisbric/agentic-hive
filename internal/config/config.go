@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 )
@@ -152,6 +153,7 @@ func (c *Config) ApplyDBSettings(dbSettings map[string]string) {
 	// Auto-detect keystore backend: if vault address + token are configured, switch to vault
 	if c.VaultAddr != "" && c.VaultToken != "" && os.Getenv("OVERLAY_KEYSTORE_BACKEND") == "" {
 		c.KeyStoreBackend = "vault"
+		slog.Info("auto-detected vault keystore from DB settings", "addr", c.VaultAddr)
 	}
 
 	// General
