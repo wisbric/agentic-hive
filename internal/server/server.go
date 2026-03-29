@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -396,12 +397,18 @@ func (s *Server) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, "vaultKeyPath is required when keySource is vault_ref", http.StatusBadRequest)
 			return
 		}
+		// Sanitize path: reject traversal attempts and absolute paths
+		if strings.Contains(req.VaultKeyPath, "..") || strings.HasPrefix(req.VaultKeyPath, "/") {
+			jsonError(w, "invalid vault path", http.StatusBadRequest)
+			return
+		}
 		if s.keyStore.Backend() != "vault" {
 			jsonError(w, "vault is not configured; cannot use vault_ref key source", http.StatusBadRequest)
 			return
 		}
 		if _, err := s.keyStore.GetFromPath(r.Context(), req.VaultKeyPath); err != nil {
-			jsonError(w, "vault path not readable: "+err.Error(), http.StatusBadRequest)
+			slog.Warn("vault path validation failed", "path", req.VaultKeyPath, "error", err)
+			jsonError(w, "vault path not readable or does not contain a private_key field", http.StatusBadRequest)
 			return
 		}
 	}

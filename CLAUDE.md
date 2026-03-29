@@ -50,8 +50,10 @@ helm upgrade agentic-hive deploy/helm/agentic-hive \
 - **Config resolution:** env vars > DB settings > defaults. See `config.ResolveSettings()`.
 - **Hot-reload:** OIDC and Vault handlers are wrapped in `Swappable*` structs with RWMutex. Settings API triggers re-initialization without restart.
 - **Auth flow:** JWT in httpOnly cookie (`session`), CSRF double-submit (`csrf` cookie + `X-CSRF-Token` header). CSRF skips if no session cookie (auth middleware handles rejection).
-- **SSH keys:** never plaintext on disk. Local backend: AES-256-GCM + Argon2id in SQLite. Vault backend: KVv2 at `{secretPath}/{serverID}` with `{"private_key": "..."}`.
+- **SSH keys:** never plaintext on disk. Local backend: AES-256-GCM + Argon2id in SQLite. Vault backend: KVv2 with `{"private_key": "..."}`.
+- **Vault key refs:** servers can have `key_source="vault_ref"` with a user-specified Vault path. Key is read live on every connection (no copy). See `sshpool.getKey()`.
 - **Host keys:** TOFU model. First connect stores key, subsequent connects verify. Mismatch → `key_mismatch` status, admin must `POST /api/servers/:id/accept-key`.
+- **Per-user isolation:** servers have `owner_id`. Users see only their own servers. Admins see all.
 - **Session lifecycle:** `?live=true` on session list endpoint bypasses the poll cache for immediate feedback after create/kill. No auto-refresh — manual refresh button.
 - **Static files:** embedded via `go:embed` from `cmd/server/static/`. No build step, no framework.
 
@@ -66,7 +68,7 @@ helm upgrade agentic-hive deploy/helm/agentic-hive \
 
 ## Important Notes
 
-- `go.mod` module path is `github.com/wisbric/agentic-hive` — update this to match your actual repository path
+- Go module path: `github.com/wisbric/agentic-hive`
 - CGO is required for sqlite3 — the Dockerfile uses `golang:1.26-alpine` with `gcc musl-dev`
 - The Vault secret path should NOT include the `secret/` mount prefix (KVv2 client adds it automatically)
 - `OVERLAY_SESSION_SECRET` is required — binary refuses to start without it

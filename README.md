@@ -13,6 +13,8 @@ A lightweight web application for managing tmux sessions across multiple remote 
 - **Session templates** — Claude Code, Claude Code (full access), Codex, Shell, or custom commands
 - **Local + SSO auth** — built-in username/password with optional OIDC (Keycloak, Authentik, etc.)
 - **Encrypted SSH key storage** — AES-256-GCM with Argon2id (local) or HashiCorp Vault / OpenBao
+- **Vault key references** — point to existing keys in Vault instead of pasting; live-read on every connection, instant rotation
+- **Per-user isolation** — each user manages their own servers and sessions
 - **Admin UI** — user management, OIDC/Vault configuration — all hot-reloadable without restart
 - **Dark/light theme** — gradient-futuristic NightOwl design with glassmorphism, theme toggle persisted per user
 - **Production-ready** — structured logging, Prometheus metrics, graceful shutdown, audit log, CSRF protection, rate limiting, SSH host key verification (TOFU)
@@ -42,6 +44,14 @@ helm install agentic-hive \
   --set ingress.hosts[0].paths[0].pathType=Prefix
 ```
 
+### Docker Compose
+
+```bash
+cp .env.example .env
+# Edit .env — set OVERLAY_SESSION_SECRET
+docker compose up -d
+```
+
 ### From source
 
 ```bash
@@ -54,7 +64,7 @@ OVERLAY_DB_PATH=./hive.db \
 ## Usage
 
 1. **Create admin account** — first visit shows a setup form
-2. **Add a tmux server** — provide hostname, SSH user, and paste the SSH private key
+2. **Add a tmux server** — provide hostname, SSH user, and either paste the SSH key or reference one from Vault
 3. **Create sessions** — pick a template (Claude Code, Codex, Shell, etc.) and a working directory
 4. **Connect** — click "Terminal" for in-browser access or "SSH" to copy the command for your local terminal
 
@@ -150,11 +160,11 @@ See [`deploy/helm/agentic-hive/values.yaml`](deploy/helm/agentic-hive/values.yam
 | `POST` | `/api/auth/setup` | - | First-run admin setup |
 | `POST` | `/api/auth/logout` | user | Logout |
 | `GET` | `/api/auth/oidc/login` | - | OIDC login redirect |
-| `GET` | `/api/servers` | user | List servers |
-| `POST` | `/api/servers` | admin | Register server |
-| `DELETE` | `/api/servers/:id` | admin | Remove server |
-| `PUT` | `/api/servers/:id/key` | admin | Upload SSH key |
-| `POST` | `/api/servers/:id/accept-key` | admin | Accept new host key |
+| `GET` | `/api/servers` | user | List servers (filtered by ownership) |
+| `POST` | `/api/servers` | user | Register server (assigned to current user) |
+| `DELETE` | `/api/servers/:id` | user | Remove server (owner or admin) |
+| `PUT` | `/api/servers/:id/key` | user | Upload SSH key (local key source only) |
+| `POST` | `/api/servers/:id/accept-key` | user | Accept new host key (owner or admin) |
 | `GET` | `/api/servers/:id/sessions` | user | List tmux sessions |
 | `POST` | `/api/servers/:id/sessions` | user | Create session |
 | `DELETE` | `/api/servers/:id/sessions/:name` | user | Kill session |
@@ -175,7 +185,7 @@ See [`deploy/helm/agentic-hive/values.yaml`](deploy/helm/agentic-hive/values.yam
 ## Security
 
 - **Authentication**: Local bcrypt + JWT, or OIDC SSO. httpOnly secure cookies.
-- **RBAC**: Admin/user roles. Server management restricted to admins.
+- **RBAC**: Admin/user roles. Users manage their own servers; admins see all.
 - **CSRF**: Double-submit cookie pattern on all state-changing endpoints.
 - **Rate limiting**: Per-IP brute-force protection on login.
 - **SSH keys**: AES-256-GCM encrypted at rest (Argon2id KDF) or stored in Vault.

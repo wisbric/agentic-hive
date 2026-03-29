@@ -28,7 +28,10 @@ cmd/server/main.go
 No external database dependency. Trade-off: no HA. The PDB documents this constraint. Backup CronJob mitigates data loss risk.
 
 ### Pluggable KeyStore
-`KeyStore` interface with two backends. Local: AES-256-GCM with Argon2id KDF, encrypted in SQLite. Vault: KVv2, keys never touch the app's DB. Swappable at runtime via admin UI.
+`KeyStore` interface with two backends. Local: AES-256-GCM with Argon2id KDF, encrypted in SQLite. Vault: KVv2, keys never touch the app's DB. Swappable at runtime via admin UI. Servers can also reference keys at arbitrary Vault paths (`key_source=vault_ref`) — read live on every connection, no duplication.
+
+### Per-User Isolation
+Servers have an `owner_id` column. Users see only their own servers. Admins see all. All operations (create, delete, key upload, sessions, terminal) check ownership.
 
 ### Swappable OIDC
 `SwappableOIDCHandler` wraps the OIDC provider behind a RWMutex. Admin can configure Keycloak via the UI and it takes effect without restart. Returns 404 when not configured.
@@ -50,7 +53,7 @@ The 30s background poller updates server status dots. Session lists use `?live=t
 | Layer | Mechanism |
 |-------|-----------|
 | Auth | JWT in httpOnly secure cookie, local bcrypt or OIDC |
-| RBAC | `RequireAdmin` middleware on server/user management |
+| RBAC | Admin/user roles + per-user server ownership |
 | CSRF | Double-submit cookie, skipped for unauthenticated requests |
 | Rate limiting | Per-IP on login, configurable window |
 | SSH keys | AES-256-GCM at rest (separate encryption secret) or Vault |
@@ -63,7 +66,7 @@ The 30s background poller updates server status dots. Session lists use `?live=t
 
 ```sql
 users          — id, username, password_hash, role, oidc_subject
-servers        — id, name, host, port, ssh_user, status
+servers        — id, name, host, port, ssh_user, status, owner_id, key_source, vault_key_path
 ssh_keys       — server_id (FK), encrypted_key, salt, nonce
 host_keys      — server_id (FK), host_key, fingerprint
 session_templates — id, name, command, workdir, server_id
