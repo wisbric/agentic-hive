@@ -238,6 +238,9 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 
 	var wg sync.WaitGroup
 
+	// sshDone is closed when the SSH command finishes (tmux exits/detaches)
+	sshDone := make(chan struct{})
+
 	// SSH stdout -> WebSocket (terminal output)
 	wg.Add(1)
 	go func() {
@@ -249,7 +252,6 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 				if writeErr := ws.WriteMessage(websocket.BinaryMessage, buf[:n]); writeErr != nil {
 					return
 				}
-				// Terminal output counts as activity.
 				atomic.StoreInt64(&lastActivity, time.Now().UnixNano())
 			}
 			if err != nil {
@@ -266,18 +268,19 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		for {
 			msgType, msg, err := ws.ReadMessage()
 			if err != nil {
+				// WebSocket closed (browser tab closed) — signal SSH to stop
+				sshSession.Signal(ssh.SIGHUP)
+				sshSession.Close()
 				return
 			}
 
 			switch msgType {
 			case websocket.BinaryMessage:
-				// Raw terminal input — counts as activity.
 				if _, err := stdin.Write(msg); err != nil {
 					return
 				}
 				atomic.StoreInt64(&lastActivity, time.Now().UnixNano())
 			case websocket.TextMessage:
-				// Control message (resize) — does NOT count as activity.
 				var resize resizeMsg
 				if err := json.Unmarshal(msg, &resize); err != nil {
 					continue
@@ -289,11 +292,25 @@ func (b *Bridge) HandleTerminal(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// Wait for SSH command to finish
-	_ = sshSession.Wait()
+	// Wait for SSH command to finish (tmux exits or detaches)
+	go func() {
+		_ = sshSession.Wait()
+		close(sshDone)
+	}()
+
+	// Wait for either SSH to finish or done channel (idle timeout / handler exit)
+	select {
+	case <-sshDone:
+		// SSH session ended naturally (tmux detached/exited)
+	case <-done:
+		// Handler exiting (idle timeout or context cancelled) — force close SSH
+		sshSession.Signal(ssh.SIGHUP)
+		sshSession.Close()
+	}
 
 	// Close WebSocket to signal disconnect to browser
 	ws.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "session ended"))
+	ws.Close()
 	wg.Wait()
 }
