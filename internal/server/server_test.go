@@ -43,6 +43,7 @@ func testServer(t *testing.T) *Server {
 	sm := session.NewManager(st, pool)
 
 	srv := New(cfg, st, pool, ks, sm, nil)
+	t.Cleanup(func() { srv.Close() })
 	return srv
 }
 
@@ -132,6 +133,7 @@ func TestReadyzRequireServerNoServers(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
 	srv := New(cfg, st, pool, ks, sm, nil)
+	t.Cleanup(func() { srv.Close() })
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w := httptest.NewRecorder()
@@ -189,6 +191,7 @@ func TestReadyzRequireServerUnreachable(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
 	s := New(cfg, st, pool, ks, sm, nil)
+	t.Cleanup(func() { s.Close() })
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w := httptest.NewRecorder()
@@ -249,6 +252,7 @@ func TestReadyzRequireServerReachable(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 	sm := session.NewManager(st, pool)
 	s := New(cfg, st, pool, ks, sm, nil)
+	t.Cleanup(func() { s.Close() })
 
 	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w := httptest.NewRecorder()
