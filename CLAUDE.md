@@ -66,6 +66,18 @@ helm upgrade agentic-hive deploy/helm/agentic-hive \
 - Audit log entries for all security-relevant actions
 - Commits follow conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`, `ci:`, `chore:`)
 
+## Code Review Checklist — Resource Leaks
+
+When reviewing code that creates goroutines, connections, or long-lived resources, check:
+
+1. **Goroutine lifecycle:** every `go func()` must have a clear exit path. If it reads from a channel or connection, what closes it? If it blocks on `Wait()`, can it be unblocked?
+2. **WebSocket + SSH pairing:** when a WebSocket closes, the SSH session MUST be explicitly closed (not just stdin). Send SIGHUP + Close(). Don't rely on `defer` after a blocking `Wait()`.
+3. **Connection pool cleanup:** `Remove()` and `Close()` must close the underlying connections, not just delete from the map.
+4. **Polling goroutines:** `Stop()` must actually terminate the goroutine, not just signal it. Verify with `goleak`.
+5. **Defer ordering:** `defer close(done)` must come BEFORE `defer resource.Close()` so the done channel signals watchers before the resource is closed.
+6. **Metric symmetry:** every `gauge.Inc()` must have a matching `gauge.Dec()` on all exit paths, including error paths.
+7. **Context cancellation:** long-running operations should respect `ctx.Done()` and clean up when the context is cancelled.
+
 ## Important Notes
 
 - Go module path: `github.com/wisbric/agentic-hive`
